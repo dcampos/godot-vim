@@ -8,6 +8,8 @@
 class TestProxy : public ScriptTextEditorProxy {
     OBJ_TYPE(TestProxy, ScriptTextEditorProxy);
 
+    typedef void (TestProxy::* cmdFunction) ();
+
     enum VimMode {
         COMMAND,
         INSERT,
@@ -22,8 +24,25 @@ class TestProxy : public ScriptTextEditorProxy {
         NONE
     };
 
+    enum CommandType {
+        MOTION,
+        OPERATOR,
+        ACTION,
+        SEARCH,
+        EX
+    };
+
+    struct VimCommand {
+        String binding;
+        cmdFunction function;
+        CommandType type;
+    };
+
+    static Map<String, VimCommand> command_map;
+
     VimMode vim_mode;
     int virtual_column;
+    int repeat_count;
 
     Command current_command;
 
@@ -40,19 +59,37 @@ class TestProxy : public ScriptTextEditorProxy {
     String _get_character(const InputEventKey &p_event);
 
     String _get_current_line();
+    String _get_line(int line);
     int _get_current_line_length();
 
     int _find_forward(const String &p_string);
     int _find_backward(const String &p_string);
 
-    void _open_line(int line);
+    // Action commands
+    void _move_left();
+    void _move_right();
+    void _move_down();
+    void _move_up();
+    void _move_to_line_end();
+    void _move_to_line_start();
+    void _move_word_right();
+    void _move_word_right_big();
+    void _move_word_beginning();
+    void _move_word_beginning_big();
+    void _move_word_end();
+    void _move_word_end_big();
+    void _move_paragraph_up();
+    void _move_paragraph_down();
+    void _enter_insert_mode();
+    void _enter_insert_mode_append();
+    void _open_line_above();
+    void _open_line_below();
 
-    void _move_left(int cols);
-    void _move_right(int cols);
-    void _move_down(int lines);
-    void _move_up(int lines);
+    // Utility functions
     void _move_columns(int cols);
     void _move_lines(int lines);
+    void _open_line(int line);
+    Point2 _find_next_word();
 
     void _check_virtual_column();
 
@@ -60,6 +97,9 @@ class TestProxy : public ScriptTextEditorProxy {
     void _cursor_set_column(int column);
     int _cursor_get_line();
     int _cursor_get_column();
+
+    static void _setup_command_map();
+    static void _create_command(String binding, cmdFunction function, CommandType type = MOTION);
 
 protected:
     static void _bind_methods();
