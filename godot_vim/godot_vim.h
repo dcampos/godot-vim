@@ -1,27 +1,28 @@
-#ifndef TEST_H
-#define TEST_H
+#ifndef GODOT_VIM_H
+#define GODOT_VIM_H
 
 #include "reference.h"
 #include "editor/editor_plugin.h"
 #include "editor/plugins/script_editor_plugin.h"
 
-class TestProxy : public ScriptTextEditorProxy {
-    OBJ_TYPE(TestProxy, ScriptTextEditorProxy);
+class GodotVim : public ScriptTextEditorProxy {
+    OBJ_TYPE(GodotVim, ScriptTextEditorProxy);
 
-    typedef void (TestProxy::* cmdFunction) ();
+    typedef void (GodotVim::* cmdFunction) ();
+    typedef bool (* matchFunction) (int, String);
 
     enum VimMode {
         COMMAND,
         INSERT,
         VISUAL,
         VISUAL_BLOCK,
-        VISUAL_LINE
+        VISUAL_LINE,
+        ALL_MODES
     };
 
     enum Command {
         FIND_FORWARD,
-        FIND_BACKWARD,
-        NONE
+        FIND_BACKWARD
     };
 
     enum CommandType {
@@ -32,25 +33,37 @@ class TestProxy : public ScriptTextEditorProxy {
         EX
     };
 
+    enum CaseOperation {
+        TO_LOWER,
+        TO_UPPER,
+        INVERT
+    };
+
     struct VimCommand {
         String binding;
         cmdFunction function;
         CommandType type;
+        VimMode context;
     };
 
+    static Vector<String> command_bindings;
     static Map<String, VimCommand> command_map;
 
     VimMode vim_mode;
     int virtual_column;
     int repeat_count;
+    int motion_count;
 
-    Command current_command;
+    String current_command;
+
+    String input_string;
 
     int count;
     TextEdit *text_edit;
     ScriptTextEditor *editor;
 
     void _setup_editor();
+    void _clear_state();
     void editor_focus_enter();
 
     // Helper methods
@@ -61,9 +74,7 @@ class TestProxy : public ScriptTextEditorProxy {
     String _get_current_line();
     String _get_line(int line);
     int _get_current_line_length();
-
-    int _find_forward(const String &p_string);
-    int _find_backward(const String &p_string);
+    int _get_line_count();
 
     // Action commands
     void _move_left();
@@ -78,28 +89,59 @@ class TestProxy : public ScriptTextEditorProxy {
     void _move_word_beginning_big();
     void _move_word_end();
     void _move_word_end_big();
+    void _move_word_end_backward();
+    void _move_word_end_big_backward();
     void _move_paragraph_up();
     void _move_paragraph_down();
+    void _move_to_matching_pair();
+    void _move_to_first_non_blank();
+    void _move_to_beginning_of_last_line();
+    void _move_to_beginning_of_first_line();
+    void _move_to_beginning_of_previous_line();
+    void _move_to_beginning_of_next_line();
+    void _move_to_last_searched_char();
+    void _move_to_last_searched_char_backward();
+    void _move_to_column();
+
     void _enter_insert_mode();
     void _enter_insert_mode_append();
     void _open_line_above();
     void _open_line_below();
 
+    void _delete_text();
+    void _change_text();
+    void _change_case();
+    void _change_to_lower_case();
+    void _change_to_upper_case();
+    void _indent_text();
+    void _unindent_text();
+
+    void _undo();
+    void _redo();
+
     // Utility functions
-    void _move_columns(int cols);
-    void _move_lines(int lines);
+    int _find_forward(const String &p_string);
+    int _find_backward(const String &p_string);
+
+    void _move_backward(matchFunction function);
+    void _move_forward(matchFunction function);
+    void _move_to_first_non_blank(int line);
+    void _move_by_columns(int cols);
+    void _move_by_lines(int lines);
     void _open_line(int line);
+    void _change_case(CaseOperation option);
     Point2 _find_next_word();
 
     void _check_virtual_column();
 
+    void _cursor_set(int line, int col);
     void _cursor_set_line(int line);
     void _cursor_set_column(int column);
     int _cursor_get_line();
     int _cursor_get_column();
 
     static void _setup_command_map();
-    static void _create_command(String binding, cmdFunction function, CommandType type = MOTION);
+    static void _create_command(String binding, cmdFunction function, CommandType type = MOTION, VimMode context = ALL_MODES);
 
 protected:
     static void _bind_methods();
@@ -108,18 +150,18 @@ public:
     void set_editor(ScriptTextEditor *editor) override;
     void editor_input(const InputEvent &p_event) override;
 
-    TestProxy();
+    GodotVim();
 };
 
-class Test : public EditorPlugin {
-    OBJ_TYPE(Test, EditorPlugin);
+class GodotVimPlugin : public EditorPlugin {
+    OBJ_TYPE(GodotVimPlugin, EditorPlugin);
 
 protected:
     static void _bind_methods();
 
 public:
-    Test(EditorNode *p_node);
-    ~Test();
+    GodotVimPlugin(EditorNode *p_node);
+    ~GodotVimPlugin();
 };
 
-#endif // TEST_H
+#endif // GODOT_VIM_H
