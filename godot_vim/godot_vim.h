@@ -5,8 +5,8 @@
 #include "editor/editor_plugin.h"
 #include "editor/plugins/script_editor_plugin.h"
 
-class GodotVim : public ScriptTextEditorProxy {
-    OBJ_TYPE(GodotVim, ScriptTextEditorProxy);
+class GodotVim : public Reference {
+    OBJ_TYPE(GodotVim, Reference);
 
     typedef void (GodotVim::* cmdFunction) ();
     typedef bool (* matchFunction) (int, String);
@@ -59,12 +59,14 @@ class GodotVim : public ScriptTextEditorProxy {
     String input_string;
 
     int count;
+
     TextEdit *text_edit;
-    ScriptTextEditor *editor;
+    CodeTextEditor *editor;
 
     void _setup_editor();
     void _clear_state();
-    void editor_focus_enter();
+    void _editor_focus_enter();
+    void _editor_input(const InputEvent &p_event);
 
     // Helper methods
     void _set_vim_mode(VimMode mode);
@@ -119,6 +121,9 @@ class GodotVim : public ScriptTextEditorProxy {
     void _undo();
     void _redo();
 
+    void _goto_next_tab();
+    void _goto_previous_tab();
+
     // Utility functions
     int _find_forward(const String &p_string);
     int _find_backward(const String &p_string);
@@ -145,21 +150,35 @@ class GodotVim : public ScriptTextEditorProxy {
 
 protected:
     static void _bind_methods();
+    void disconnect_all();
 
 public:
-    void set_editor(ScriptTextEditor *editor) override;
-    void editor_input(const InputEvent &p_event) override;
+    void set_editor(CodeTextEditor *editor);
 
     GodotVim();
+    ~GodotVim();
 };
 
 class GodotVimPlugin : public EditorPlugin {
     OBJ_TYPE(GodotVimPlugin, EditorPlugin);
 
+    static Map<String, GodotVim*> editor_registry;
+
+    TabContainer *tab_container;
+
+    void _plug_editor(CodeTextEditor *editor);
+
+    String vim_plugged_group;
+
 protected:
     static void _bind_methods();
 
 public:
+    void _notification(int p_what);
+    void _tree_changed();
+    void _node_removed(Node *p_node);
+    void _tabs_changed(int current);
+
     GodotVimPlugin(EditorNode *p_node);
     ~GodotVimPlugin();
 };

@@ -90,7 +90,7 @@ void GodotVim::_clear_state() {
     current_command = "";
 }
 
-void GodotVim::editor_input(const InputEvent &p_event) {
+void GodotVim::_editor_input(const InputEvent &p_event) {
     if (p_event.type == InputEvent::KEY) {
         const InputEventKey &kk = p_event.key;
 
@@ -113,16 +113,15 @@ void GodotVim::editor_input(const InputEvent &p_event) {
 void GodotVim::_parse_command_input(const InputEventKey &p_event) {
     String character = _get_character(p_event);
     input_string += character;
+    print_line(input_string);
 
     if (command_map.has(input_string)) {
         VimCommand cmd = command_map.find(input_string)->get();
 
         if (cmd.type == OPERATOR) {
-            print_line("operator!");
             _clear_state();
             current_command = cmd.binding;
         } else if (cmd.type == MOTION && current_command != "") {
-            print_line("yay!");
             VimCommand op_cmd = command_map.find(current_command)->get();
             if (op_cmd.type == OPERATOR) {
                 int cl = _cursor_get_line();
@@ -168,7 +167,6 @@ void GodotVim::_open_line(int line) {
 
 int GodotVim::_find_forward(const String &p_string) {
     int n = _get_current_line().find(p_string, _cursor_get_column());
-    print_line(itos(n));
     if (n >= 0) {
         _cursor_set_column(n);
     }
@@ -186,7 +184,7 @@ String GodotVim::_get_character(const InputEventKey &p_event) {
     return character;
 }
 
-void GodotVim::editor_focus_enter() {
+void GodotVim::_editor_focus_enter() {
     _setup_editor();
 }
 
@@ -649,6 +647,15 @@ void GodotVim::_redo() {
     text_edit->redo();
 }
 
+void GodotVim::_goto_next_tab() {
+    TabContainer *tab_container = text_edit->get_parent()->get_parent()->cast_to<TabContainer>();
+    tab_container->set_current_tab(tab_container->get_current_tab()+1);
+}
+
+void GodotVim::_goto_previous_tab() {
+
+}
+
 void GodotVim::_move_by_columns(int cols) {
     int col = CLAMP(text_edit->cursor_get_column() + cols, 0, _get_current_line_length() - 1);
     text_edit->cursor_set_column(col);
@@ -691,7 +698,6 @@ void GodotVim::_set_vim_mode(VimMode mode) {
 }
 
 void GodotVim::_setup_editor() {
-    print_line("setup editor");
     if (vim_mode == COMMAND) {
         text_edit->cursor_set_block_mode(true);
         text_edit->set_readonly(true);
@@ -736,7 +742,7 @@ void GodotVim::_setup_command_map() {
    _create_command("O", &GodotVim::_open_line_above);
    _create_command("i", &GodotVim::_enter_insert_mode, ACTION);
    _create_command("a", &GodotVim::_enter_insert_mode_append, ACTION);
-   //_create_command("A", &GodotVim::_enter_insert_mode_eol, ACTION);
+   //_create_command("A", &GodotVim::_enter_insert_mode_after_eol, ACTION);
    //_create_command("A", &GodotVim::_enter_insert_mode_after_selection, ACTION, VISUAL);
    //_create_command("I", &GodotVim::_enter_insert_mode_first_non_blank, ACTION);
    //_create_command("I", &GodotVim::_enter_insert_mode_before_selection, ACTION, VISUAL);
@@ -761,6 +767,8 @@ void GodotVim::_setup_command_map() {
    //_create_command("D", &GodotVim::_delete_text, ACTION, VISUAL);
    // ~
    // ~
+   //_create_command("gt", &GodotVim::_goto_next_tab, ACTION);
+   //_create_command("gT", &GodotVim::_goto_previous_tab, ACTION);
 
    //_create_command("J", &GodotVim::_join_lines, ACTION);
    //_create_command("p", &GodotVim::_paste, ACTION);
@@ -804,16 +812,21 @@ void GodotVim::_create_command(String binding, cmdFunction function, CommandType
     command_bindings.push_back(binding);
 }
 
-void GodotVim::_bind_methods() {
-    ObjectTypeDB::bind_method("editor_input", &GodotVim::editor_input);
-    ObjectTypeDB::bind_method("editor_focus_enter", &GodotVim::editor_focus_enter);
+void GodotVim::disconnect_all() {
+    text_edit->disconnect("input_event", this, "_editor_input");
+    text_edit->disconnect("focus_enter", this, "_editor_focus_enter");
 }
 
-void GodotVim::set_editor(ScriptTextEditor *editor) {
+void GodotVim::_bind_methods() {
+    ObjectTypeDB::bind_method("_editor_input", &GodotVim::_editor_input);
+    ObjectTypeDB::bind_method("_editor_focus_enter", &GodotVim::_editor_focus_enter);
+}
+
+void GodotVim::set_editor(CodeTextEditor *editor) {
     this->editor = editor;
     text_edit = editor->get_text_edit();
-    text_edit->connect("input_event", this, "editor_input");
-    text_edit->connect("focus_enter", this, "editor_focus_enter");
+    text_edit->connect("input_event", this, "_editor_input");
+    text_edit->connect("focus_enter", this, "_editor_focus_enter");
     _setup_editor();
 }
 
@@ -823,12 +836,91 @@ GodotVim::GodotVim() {
     _setup_command_map();
 }
 
+GodotVim::~GodotVim() {
+    disconnect_all();
+}
+
+void GodotVimPlugin::_node_removed(Node * p_node) {
+    if (p_node == NULL) return;
+
+    if (editor_registry.has(p_node->get_path())) {
+        print_line("node " + p_node->get_path() + " removed");
+        GodotVim *godot_vim = editor_registry.find(p_node->get_path())->get();
+        //godot_vim->disconnect_all();
+        memdelete(godot_vim);
+        editor_registry.erase(p_node->get_path());
+    }
+}
+
+void GodotVimPlugin::_tree_changed() {
+    print_line("tree changed");
+
+    Node *text_edit = get_editor_viewport()->find_node("TextEdit", true, false);
+
+    if (text_edit == NULL) return;
+
+    if (text_edit->is_type("TextEdit")) {
+
+        Node * parent = text_edit->get_parent();
+
+        if (parent->is_type("CodeTextEditor") && !parent->is_in_group(vim_plugged_group)) {
+
+            Node * parent_parent = parent->get_parent();
+
+            if (parent_parent->is_type("TabContainer")) {
+
+                tab_container = parent_parent->cast_to<TabContainer>();
+                tab_container->connect("tab_changed", this, "_tabs_changed");
+
+                for (int i = 0; i < tab_container->get_tab_count(); i++) {
+                    CodeTextEditor *code_editor = tab_container->get_tab_control(i)->cast_to<CodeTextEditor>();
+                    code_editor->add_to_group(vim_plugged_group);
+                    _plug_editor(code_editor);
+                }
+            }
+
+        }
+    }
+}
+
+void GodotVimPlugin::_plug_editor(CodeTextEditor *editor) {
+    GodotVim *godot_vim = memnew(GodotVim);
+    godot_vim->set_editor(editor);
+}
+
+void GodotVimPlugin::_notification(int p_what) {
+    if (p_what == NOTIFICATION_ENTER_TREE) {
+        print_line("entered tree");
+        get_tree()->connect("tree_changed", this, "_tree_changed");
+        get_tree()->connect("node_removed", this, "_node_removed");
+    } else if (p_what == NOTIFICATION_EXIT_TREE) {
+        print_line("exiting tree");
+        get_tree()->disconnect("node_removed", this, "_node_removed");
+        get_tree()->disconnect("tree_changed", this, "_tree_changed");
+    }
+}
+
+void GodotVimPlugin::_tabs_changed(int current) {
+    print_line("tabs changed");
+    CodeTextEditor *code_editor = tab_container->get_tab_control(current)->cast_to<CodeTextEditor>();
+    if (!code_editor->is_in_group(vim_plugged_group))
+        _plug_editor(code_editor);
+}
+
 void GodotVimPlugin::_bind_methods() {
-    // ObjectTypeDB::bind_method("editor_input", &Test::editor_input);
+    ObjectTypeDB::bind_method("_tree_changed", &GodotVimPlugin::_tree_changed);
+    ObjectTypeDB::bind_method("_node_removed", &GodotVimPlugin::_node_removed);
+    ObjectTypeDB::bind_method("_tabs_changed", &GodotVimPlugin::_tabs_changed);
 }
 
 GodotVimPlugin::GodotVimPlugin(EditorNode *p_node) {
-    ScriptTextEditor::add_proxy(memnew(GodotVim));
+    print_line("plugin created");
+    vim_plugged_group = "vim_editor_plugged";
 }
 
-GodotVimPlugin::~GodotVimPlugin() {}
+GodotVimPlugin::~GodotVimPlugin() {
+
+    if (tab_container != NULL)
+        tab_container->disconnect("tab_changed", this, "_tabs_changed");
+
+}
