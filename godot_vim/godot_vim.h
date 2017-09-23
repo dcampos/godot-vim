@@ -46,19 +46,19 @@ class GodotVim : public Reference {
         VimMode context;
     };
 
+    struct {
+        VimCommand *operator_command;
+        VimCommand *current_command;
+        int operator_count;
+        int repeat_count;
+        String input_string;
+    } input_state;
+
     static Vector<String> command_bindings;
     static Map<String, VimCommand> command_map;
 
     VimMode vim_mode;
     int virtual_column;
-    int repeat_count;
-    int motion_count;
-
-    String current_command;
-
-    String input_string;
-
-    int count;
 
     TextEdit *text_edit;
     CodeTextEditor *editor;
