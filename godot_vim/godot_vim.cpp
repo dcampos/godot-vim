@@ -1,4 +1,5 @@
 #include "godot_vim.h"
+#include "map.h"
 #include "os/keyboard.h"
 #include "os/input_event.h"
 #include "editor/plugins/script_editor_plugin.h"
@@ -77,7 +78,7 @@ static CharType _get_left_pair_symbol(CharType c) {
     return 0;
 }
 
-// End of copied functions
+// End of copi_find_command
 
 static bool _is_space(CharType c) {
     return (c == ' ' || c == '\t');
@@ -93,20 +94,21 @@ void GodotVim::_clear_state() {
 
 void GodotVim::_editor_input(const InputEvent &p_event) {
     if (p_event.type == InputEvent::KEY) {
-        const InputEventKey &kk = p_event.key;
+        const InputEventKey &ke = p_event.key;
 
-        if (!kk.pressed) return;
+        if (!ke.pressed) return;
 
-        if (kk.scancode == KEY_ESCAPE) {
+        if (ke.scancode == KEY_ESCAPE) {
             if (vim_mode == INSERT) {
                 _move_left();
-            } else if (vim_mode == COMMAND) {
+            } else if (vim_mode == NORMAL) {
                 input_state.repeat_count = 0;
                 input_state.input_string.clear();
             }
-            _set_vim_mode(COMMAND);
-        } else if (vim_mode == COMMAND) {
-            _parse_command_input(kk);
+            _set_vim_mode(NORMAL);
+        } else {
+            print_line("parsing command...");
+            _parse_command_input(ke);
         }
     }
 }
@@ -115,63 +117,149 @@ void GodotVim::_parse_command_input(const InputEventKey &p_event) {
     String character = _get_character(p_event);
     input_state.input_string += character;
 
-    if (command_map.has(input_state.input_string)) {
-        VimCommand *cmd = &command_map.find(input_state.input_string)->get();
+    if (vim_mode == NORMAL && _is_normal_command(input_state.input_string)) {
+        print_line("running normal");
 
-        if (cmd->type == OPERATOR) {
+        VimCommand *cmd = _find_command(input_state.input_string);
 
-            input_state.operator_command = cmd;
-            input_state.operator_count = input_state.repeat_count;
-            input_state.repeat_count = 0;
-            input_state.input_string.clear();
+        _run_normal_command(cmd);
 
-        } else if (cmd->type == MOTION && input_state.operator_command != NULL) {
-            print_line("running motion/operator command!");
+    } else if (vim_mode == VISUAL && _is_visual_command(input_state.input_string)) {
+        print_line("running visual");
 
-            VimCommand *op_cmd = input_state.operator_command;
+        VimCommand *cmd = _find_command(input_state.input_string);
 
-            if (op_cmd->type == OPERATOR) {
+        _run_visual_command(cmd);
 
-                int cl = _cursor_get_line();
-                int cc = _cursor_get_column();
-
-                cmdFunction func = cmd->function;
-
-                if (input_state.repeat_count == 0) input_state.repeat_count++;
-
-                (this->*func)();
-
-                text_edit->select(cl, cc, _cursor_get_line(), _cursor_get_column()+1);
-
-                cmdFunction op_func = op_cmd->function;
-
-                (this->*op_func)();
-
-                text_edit->deselect();
-            }
-            _clear_state();
-        } else {
-            print_line("running simple command!");
-            cmdFunction func = cmd->function;
-            if (input_state.repeat_count == 0) input_state.repeat_count++;
-            (this->*func)();
-            _clear_state();
-        }
     } else if (input_state.input_string.is_numeric()) {
+        print_line("adding to repeat count");
         int n = input_state.input_string.to_int();
         input_state.repeat_count = input_state.repeat_count * 10 + n;
         input_state.input_string.clear();
     } else {
+        print_line("checking if it exists...");
 
-        bool contains = false;
-
-        for (int i = 0; i < command_bindings.size(); ++i) {
-            String binding = command_bindings.get(i);
-            if (binding.begins_with(input_state.input_string)) contains = true;
-        }
-
-        if (!contains) input_state.input_string.clear();
+        if (!_map_contains_key(input_state.input_string, command_map))
+            _clear_state();
     }
+}
+
+void GodotVim::_run_normal_command(VimCommand *p_cmd) {
+    if (p_cmd->type == OPERATOR) {
+        input_state.operator_command = p_cmd;
+        input_state.operator_count = input_state.repeat_count;
+        input_state.repeat_count = 0;
+        input_state.input_string.clear();
+
+    } else if (p_cmd->type == MOTION && input_state.operator_command != NULL) {
+        print_line("running motion/operator command!");
+
+        VimCommand *op_cmd = input_state.operator_command;
+
+        if (op_cmd->type == OPERATOR) {
+
+            int cl = _cursor_get_line();
+            int cc = _cursor_get_column();
+
+            _run_command(p_cmd);
+
+            text_edit->select(cl, cc, _cursor_get_line(), _cursor_get_column()+1);
+
+            cmdFunction op_func = op_cmd->function;
+
+        _update_visual_selection();
+
+            text_edit->deselect();
+        }
+        _clear_state();
+    } else {
+        print_line("running simple command!");
+        _run_command(p_cmd);
+        _clear_state();
+    }
+}
+
+void GodotVim::_run_visual_command(VimCommand *p_cmd) {
+    int sl = text_edit->get_selection_from_line();
+    int sc = text_edit->get_selection_from_column();
+
+    if (sl < 0) sl = _cursor_get_line();
+    if (sc < 0) sc = _cursor_get_column();
+
+    print_line("running visual command!");
+
+    _run_command(p_cmd);
+
+    if (p_cmd->type == OPERATOR)
+        _toggle_visual_mode();
+
+    if (vim_mode == VISUAL) {
+        _update_visual_selection();
+    } else {
+        text_edit->deselect();
+    }
+    _clear_state();
+}
+
+void GodotVim::_update_visual_selection() {
+    int l1 = _cursor_get_line();
+    int c1 = _cursor_get_column();
+
+    if (l1 < visual_start.y || (l1 == visual_start.y && c1 <= visual_start.x)) {
+        if (visual_type == SELECT_LINES) {
+            text_edit->select(l1, 0, visual_start.y, _get_line(visual_start.y).length());
+        } else {
+            text_edit->select(l1, c1, visual_start.y, visual_start.x + 1);
+        }
+    } else {
+        if (visual_type == SELECT_LINES) {
+            text_edit->select(visual_start.y, 0, l1, _get_line(l1).length());
+        } else {
+            text_edit->select(visual_start.y, visual_start.x, l1, c1 + 1);
+        }
+    }
+}
+
+bool GodotVim::_map_contains_key(const String &input, Map<String, VimCommand> map) {
+
+    Map<String, VimCommand>::Element *e = map.front();
+
+    if (e == NULL)
+        return false;
+
+    while (e->next() != NULL) {
+        String k = e->key();
+        if (k.begins_with(input)) {
+            return true;
+        }
+        e = e->next();
+    }
+
+    return false;
+}
+
+GodotVim::VimCommand * GodotVim::_find_command(String binding) {
+    if (vim_mode == NORMAL && normal_command_map.has(binding)) {
+        return &normal_command_map.find(binding)->get();
+    } else if (vim_mode == VISUAL && visual_command_map.has(binding)) {
+        return &visual_command_map.find(binding)->get();
+    }
+    return &command_map.find(binding)->get();
+}
+
+bool GodotVim::_is_normal_command(const String &input) {
+    return command_map.has(input) || normal_command_map.has(input);
+}
+
+bool GodotVim::_is_visual_command(const String &input) {
+    return command_map.has(input) || visual_command_map.has(input);
+}
+
+void GodotVim::_run_command(VimCommand *cmd) {
+    print_line("_run_command");
+    cmdFunction func = cmd->function;
+    if (input_state.repeat_count == 0) input_state.repeat_count++;
+    (this->*func)();
 }
 
 void GodotVim::_open_line(int line) {
@@ -573,6 +661,24 @@ void GodotVim::_enter_insert_mode_append() {
     _cursor_set_column(_cursor_get_column() + 1);
 }
 
+void GodotVim::_toggle_visual_mode() {
+    if (vim_mode == VISUAL) {
+        _set_vim_mode(NORMAL);
+    } else {
+        visual_type = SELECT_CHARS;
+        _set_vim_mode(VISUAL);
+    }
+}
+
+void GodotVim::_toggle_visual_mode_line() {
+    if (vim_mode == VISUAL && visual_type == SELECT_LINES) {
+        _set_vim_mode(NORMAL);
+    } else {
+        visual_type = SELECT_LINES;
+        _set_vim_mode(VISUAL);
+    }
+}
+
 void GodotVim::_open_line_below() {
     _open_line(0);
     _set_vim_mode(INSERT);
@@ -697,14 +803,22 @@ void GodotVim::_set_vim_mode(VimMode mode) {
 
     switch (mode) {
 
-    case COMMAND:
+    case NORMAL:
         text_edit->cursor_set_block_mode(true);
         text_edit->set_readonly(true);
+        text_edit->deselect();
         break;
 
     case INSERT:
         text_edit->cursor_set_block_mode(false);
         text_edit->set_readonly(false);
+        text_edit->deselect();
+        break;
+
+    case VISUAL:
+        visual_start.x = _cursor_get_column();
+        visual_start.y = _cursor_get_line();
+        _update_visual_selection();
         break;
 
     default:
@@ -713,14 +827,15 @@ void GodotVim::_set_vim_mode(VimMode mode) {
 }
 
 void GodotVim::_setup_editor() {
-    if (vim_mode == COMMAND) {
+    if (vim_mode == NORMAL) {
         text_edit->cursor_set_block_mode(true);
         text_edit->set_readonly(true);
     }
 }
 
 Map<String, GodotVim::VimCommand> GodotVim::command_map;
-Vector<String> GodotVim::command_bindings;
+Map<String, GodotVim::VimCommand> GodotVim::normal_command_map;
+Map<String, GodotVim::VimCommand> GodotVim::visual_command_map;
 
 void GodotVim::_setup_command_map() {
 
@@ -755,15 +870,15 @@ void GodotVim::_setup_command_map() {
    _create_command("%", &GodotVim::_move_to_matching_pair);
    _create_command("o", &GodotVim::_open_line_below);
    _create_command("O", &GodotVim::_open_line_above);
-   _create_command("i", &GodotVim::_enter_insert_mode, ACTION);
-   _create_command("a", &GodotVim::_enter_insert_mode_append, ACTION);
+   _create_command("i", &GodotVim::_enter_insert_mode, ACTION, NORMAL);
+   _create_command("a", &GodotVim::_enter_insert_mode_append, ACTION, NORMAL);
    //_create_command("A", &GodotVim::_enter_insert_mode_after_eol, ACTION);
    //_create_command("A", &GodotVim::_enter_insert_mode_after_selection, ACTION, VISUAL);
    //_create_command("I", &GodotVim::_enter_insert_mode_first_non_blank, ACTION);
    //_create_command("I", &GodotVim::_enter_insert_mode_before_selection, ACTION, VISUAL);
-   //_create_command("v", &GodotVim::_toggle_visual_mode, ACTION);
-   //_create_command("V", &GodotVim::_toggle_visual_line_mode, ACTION);
-   //_create_command("<C-v>", &GodotVim::_toggle_visual_block_mode, ACTION);
+   _create_command("v", &GodotVim::_toggle_visual_mode, ACTION);
+   _create_command("V", &GodotVim::_toggle_visual_mode_line, ACTION);
+   //_create_command("<C-v>", &GodotVim::_toggle_visual_mode_block, ACTION);
 
    _create_command("d", &GodotVim::_delete_text, OPERATOR);
    //_create_command("y", &GodotVim::_yank_text, OPERATOR);
@@ -791,9 +906,9 @@ void GodotVim::_setup_command_map() {
    //_create_command("r", &GodotVim::_replace_char, ACTION);
 
    _create_command("u", &GodotVim::_undo, ACTION);
-   //_create_command("u", &GodotVim::_change_to_lowercase, OPERATOR, VISUAL);
+   _create_command("u", &GodotVim::_change_to_lower_case, OPERATOR, VISUAL);
    //_create_command("<C-r>", &GodotVim::_redo, ACTION);
-   //_create_command("U", &GodotVim::_change_to_uppercase, OPERATOR, VISUAL);
+   _create_command("U", &GodotVim::_change_to_upper_case, OPERATOR, VISUAL);
 
    //_create_command("zz", &GodotVim::_scroll_to_center, ACTION);
    //_create_command("z.", &GodotVim::_scroll_to_center_first_non_blank, ACTION);
@@ -823,8 +938,13 @@ void GodotVim::_setup_command_map() {
 
 void GodotVim::_create_command(String binding, cmdFunction function, CommandType type, VimMode context) {
     VimCommand cmd = {binding, function, type, context};
-    command_map.insert(binding, cmd);
-    command_bindings.push_back(binding);
+    if (context == NONE) {
+        command_map.insert(binding, cmd);
+    } else if (context == NORMAL) {
+        normal_command_map.insert(binding, cmd);
+    } else if (context == VISUAL) {
+        visual_command_map.insert(binding, cmd);
+    }
 }
 
 void GodotVim::disconnect_all() {
@@ -846,8 +966,9 @@ void GodotVim::set_editor(CodeTextEditor *editor) {
 }
 
 GodotVim::GodotVim() {
-    vim_mode = COMMAND;
+    vim_mode = NORMAL;
     virtual_column = 0;
+    visual_start = Vector2();
     _setup_command_map();
 }
 

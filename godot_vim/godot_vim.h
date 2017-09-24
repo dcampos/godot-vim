@@ -12,18 +12,17 @@ class GodotVim : public Reference {
     typedef bool (* matchFunction) (int, String);
 
     enum VimMode {
-        COMMAND,
+        NORMAL,
         INSERT,
         VISUAL,
-        VISUAL_BLOCK,
-        VISUAL_LINE,
-        ALL_MODES
-    };
+        NONE
+    } vim_mode;
 
-    enum Command {
-        FIND_FORWARD,
-        FIND_BACKWARD
-    };
+    enum VisualType {
+        SELECT_CHARS,
+        SELECT_LINES,
+        SELECT_BLOCK
+    } visual_type;
 
     enum CommandType {
         MOTION,
@@ -46,7 +45,7 @@ class GodotVim : public Reference {
         VimMode context;
     };
 
-    struct {
+    struct InputState {
         VimCommand *operator_command;
         VimCommand *current_command;
         int operator_count;
@@ -56,8 +55,10 @@ class GodotVim : public Reference {
 
     static Vector<String> command_bindings;
     static Map<String, VimCommand> command_map;
+    static Map<String, VimCommand> normal_command_map;
+    static Map<String, VimCommand> visual_command_map;
 
-    VimMode vim_mode;
+    Vector2 visual_start;
     int virtual_column;
 
     TextEdit *text_edit;
@@ -71,12 +72,19 @@ class GodotVim : public Reference {
     // Helper methods
     void _set_vim_mode(VimMode mode);
     void _parse_command_input(const InputEventKey &p_event);
-    String _get_character(const InputEventKey &p_event);
+    void _run_normal_command(VimCommand *p_cmd);
+    void _run_visual_command(VimCommand *p_cmd);
 
-    String _get_current_line();
-    String _get_line(int line);
-    int _get_current_line_length();
-    int _get_line_count();
+    VimCommand * _find_command(String binding);
+
+    bool _is_normal_command(const String &input);
+    bool _is_visual_command(const String &input);
+
+    bool _map_contains_key(const String &input, Map<String, VimCommand> map);
+
+    void _run_command(VimCommand *cmd);
+
+    String _get_character(const InputEventKey &p_event);
 
     // Action commands
     void _move_left();
@@ -107,6 +115,10 @@ class GodotVim : public Reference {
 
     void _enter_insert_mode();
     void _enter_insert_mode_append();
+
+    void _toggle_visual_mode();
+    void _toggle_visual_mode_line();
+
     void _open_line_above();
     void _open_line_below();
 
@@ -139,14 +151,25 @@ class GodotVim : public Reference {
 
     void _check_virtual_column();
 
+    String _get_current_line();
+    String _get_line(int line);
+    int _get_current_line_length();
+    int _get_line_count();
+
     void _cursor_set(int line, int col);
     void _cursor_set_line(int line);
     void _cursor_set_column(int column);
     int _cursor_get_line();
     int _cursor_get_column();
 
+    int _selection_get_line_from();
+    int _selection_get_column_from();
+    int _selection_get_line_to();
+    int _selection_get_column_to();
+    void _update_visual_selection();
+
     static void _setup_command_map();
-    static void _create_command(String binding, cmdFunction function, CommandType type = MOTION, VimMode context = ALL_MODES);
+    static void _create_command(String binding, cmdFunction function, CommandType type = MOTION, VimMode context = NONE);
 
 protected:
     static void _bind_methods();
