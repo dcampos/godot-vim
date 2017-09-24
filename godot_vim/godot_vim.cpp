@@ -4,7 +4,7 @@
 #include "os/input_event.h"
 #include "editor/plugins/script_editor_plugin.h"
 
-// Some utility functions copied over from text_edit.cpp
+// Some utility functions copied from text_edit.cpp
 
 static const int a = 0;
 
@@ -78,7 +78,7 @@ static CharType _get_left_pair_symbol(CharType c) {
     return 0;
 }
 
-// End of copi_find_command
+// End of copied functions
 
 static bool _is_space(CharType c) {
     return (c == ' ' || c == '\t');
@@ -167,7 +167,7 @@ void GodotVim::_run_normal_command(VimCommand *p_cmd) {
 
             cmdFunction op_func = op_cmd->function;
 
-        _update_visual_selection();
+            (this->*op_func)();
 
             text_edit->deselect();
         }
@@ -866,73 +866,73 @@ void GodotVim::_setup_command_map() {
     _create_command("b", &GodotVim::_move_word_beginning);
     _create_command("B", &GodotVim::_move_word_beginning_big);
     _create_command("}", &GodotVim::_move_paragraph_down);
-   _create_command("{", &GodotVim::_move_paragraph_up);
-   _create_command("%", &GodotVim::_move_to_matching_pair);
-   _create_command("o", &GodotVim::_open_line_below);
-   _create_command("O", &GodotVim::_open_line_above);
-   _create_command("i", &GodotVim::_enter_insert_mode, ACTION, NORMAL);
-   _create_command("a", &GodotVim::_enter_insert_mode_append, ACTION, NORMAL);
-   //_create_command("A", &GodotVim::_enter_insert_mode_after_eol, ACTION);
-   //_create_command("A", &GodotVim::_enter_insert_mode_after_selection, ACTION, VISUAL);
-   //_create_command("I", &GodotVim::_enter_insert_mode_first_non_blank, ACTION);
-   //_create_command("I", &GodotVim::_enter_insert_mode_before_selection, ACTION, VISUAL);
-   _create_command("v", &GodotVim::_toggle_visual_mode, ACTION);
-   _create_command("V", &GodotVim::_toggle_visual_mode_line, ACTION);
-   //_create_command("<C-v>", &GodotVim::_toggle_visual_mode_block, ACTION);
+    _create_command("{", &GodotVim::_move_paragraph_up);
+    _create_command("%", &GodotVim::_move_to_matching_pair);
+    _create_command("o", &GodotVim::_open_line_below);
+    _create_command("O", &GodotVim::_open_line_above);
+    _create_command("i", &GodotVim::_enter_insert_mode, ACTION, NORMAL);
+    _create_command("a", &GodotVim::_enter_insert_mode_append, ACTION, NORMAL);
+    //_create_command("A", &GodotVim::_enter_insert_mode_after_eol, ACTION);
+    //_create_command("A", &GodotVim::_enter_insert_mode_after_selection, ACTION, VISUAL);
+    //_create_command("I", &GodotVim::_enter_insert_mode_first_non_blank, ACTION);
+    //_create_command("I", &GodotVim::_enter_insert_mode_before_selection, ACTION, VISUAL);
+    _create_command("v", &GodotVim::_toggle_visual_mode, ACTION);
+    _create_command("V", &GodotVim::_toggle_visual_mode_line, ACTION);
+    //_create_command("<C-v>", &GodotVim::_toggle_visual_mode_block, ACTION);
 
-   _create_command("d", &GodotVim::_delete_text, OPERATOR);
-   //_create_command("y", &GodotVim::_yank_text, OPERATOR);
-   _create_command("c", &GodotVim::_change_text, OPERATOR);
-   _create_command(">", &GodotVim::_indent_text, OPERATOR);
-   _create_command("<", &GodotVim::_unindent_text, OPERATOR);
-   _create_command("g~", &GodotVim::_change_case, OPERATOR);
-   _create_command("gu", &GodotVim::_change_to_lower_case, OPERATOR);
-   _create_command("gU", &GodotVim::_change_to_upper_case, OPERATOR);
-   //_create_command("=", &GodotVim::_indent_text, OPERATOR);
-   //_create_command("n", &GodotVim::_find_next, ACTION);
-   //_create_command("N", &GodotVim::_find_previous, ACTION);
-   //_create_command("x", &GodotVim::_delete_char, ACTION);
-   //_create_command("X", &GodotVim::_delete_previous_char, ACTION);
-   //_create_command("D", &GodotVim::_delete_to_eol, ACTION, COMMAND);
-   //_create_command("D", &GodotVim::_delete_text, ACTION, VISUAL);
-   // ~
-   // ~
-   //_create_command("gt", &GodotVim::_goto_next_tab, ACTION);
-   //_create_command("gT", &GodotVim::_goto_previous_tab, ACTION);
+    _create_command("d", &GodotVim::_delete_text, OPERATOR);
+    //_create_command("y", &GodotVim::_yank_text, OPERATOR);
+    _create_command("c", &GodotVim::_change_text, OPERATOR);
+    _create_command(">", &GodotVim::_indent_text, OPERATOR);
+    _create_command("<", &GodotVim::_unindent_text, OPERATOR);
+    _create_command("g~", &GodotVim::_change_case, OPERATOR);
+    _create_command("gu", &GodotVim::_change_to_lower_case, OPERATOR);
+    _create_command("gU", &GodotVim::_change_to_upper_case, OPERATOR);
+    //_create_command("=", &GodotVim::_indent_text, OPERATOR);
+    //_create_command("n", &GodotVim::_find_next, ACTION);
+    //_create_command("N", &GodotVim::_find_previous, ACTION);
+    //_create_command("x", &GodotVim::_delete_char, ACTION);
+    //_create_command("X", &GodotVim::_delete_previous_char, ACTION);
+    //_create_command("D", &GodotVim::_delete_to_eol, ACTION, COMMAND);
+    //_create_command("D", &GodotVim::_delete_text, ACTION, VISUAL);
+    // ~
+    // ~
+    //_create_command("gt", &GodotVim::_goto_next_tab, ACTION);
+    //_create_command("gT", &GodotVim::_goto_previous_tab, ACTION);
 
-   //_create_command("J", &GodotVim::_join_lines, ACTION);
-   //_create_command("p", &GodotVim::_paste, ACTION);
-   //_create_command("P", &GodotVim::_paste_before, ACTION);
-   //_create_command("r", &GodotVim::_replace_char, ACTION);
+    //_create_command("J", &GodotVim::_join_lines, ACTION);
+    //_create_command("p", &GodotVim::_paste, ACTION);
+    //_create_command("P", &GodotVim::_paste_before, ACTION);
+    //_create_command("r", &GodotVim::_replace_char, ACTION);
 
-   _create_command("u", &GodotVim::_undo, ACTION);
-   _create_command("u", &GodotVim::_change_to_lower_case, OPERATOR, VISUAL);
-   //_create_command("<C-r>", &GodotVim::_redo, ACTION);
-   _create_command("U", &GodotVim::_change_to_upper_case, OPERATOR, VISUAL);
+    _create_command("u", &GodotVim::_undo, ACTION);
+    _create_command("u", &GodotVim::_change_to_lower_case, OPERATOR, VISUAL);
+    //_create_command("<C-r>", &GodotVim::_redo, ACTION);
+    _create_command("U", &GodotVim::_change_to_upper_case, OPERATOR, VISUAL);
 
-   //_create_command("zz", &GodotVim::_scroll_to_center, ACTION);
-   //_create_command("z.", &GodotVim::_scroll_to_center_first_non_blank, ACTION);
-   //_create_command("zt", &GodotVim::_scroll_to_top, ACTION);
-   //_create_command("z<CR>", &GodotVim::_scroll_to_top_fist_non_blank, ACTION);
-   //_create_command("z-", &GodotVim::_scroll_to_bottom_, ACTION);
-   //_create_command("zb", &GodotVim::_scroll_to_bottom_first_non_blank, ACTION);
-   //_create_command(".", &GodotVim::_repeat_last_edit, ACTION);
-   // <C-a>
-   // <C-x>
-   // <C-x>
+    //_create_command("zz", &GodotVim::_scroll_to_center, ACTION);
+    //_create_command("z.", &GodotVim::_scroll_to_center_first_non_blank, ACTION);
+    //_create_command("zt", &GodotVim::_scroll_to_top, ACTION);
+    //_create_command("z<CR>", &GodotVim::_scroll_to_top_fist_non_blank, ACTION);
+    //_create_command("z-", &GodotVim::_scroll_to_bottom_, ACTION);
+    //_create_command("zb", &GodotVim::_scroll_to_bottom_first_non_blank, ACTION);
+    //_create_command(".", &GodotVim::_repeat_last_edit, ACTION);
+    // <C-a>
+    // <C-x>
+    // <C-x>
 
-   //_create_command("a<char>", &GodotVim::_text_object, MOTION);
-   //_create_command("i<char>", &GodotVim::_text_object_inner, MOTION);
+    //_create_command("a<char>", &GodotVim::_text_object, MOTION);
+    //_create_command("i<char>", &GodotVim::_text_object_inner, MOTION);
 
-   //
-   //_create_command("/", &GodotVim::_start_search, SEARCH);
-   //_create_command("?", &GodotVim::_start_search_backward, SEARCH);
-   //_create_command("*", &GodotVim::_search_word_under_cursor, SEARCH);
-   //_create_command("#", &GodotVim::_search_word_under_cursor_backward, SEARCH);
-   // g*
-   // g#
+    //
+    //_create_command("/", &GodotVim::_start_search, SEARCH);
+    //_create_command("?", &GodotVim::_start_search_backward, SEARCH);
+    //_create_command("*", &GodotVim::_search_word_under_cursor, SEARCH);
+    //_create_command("#", &GodotVim::_search_word_under_cursor_backward, SEARCH);
+    // g*
+    // g#
 
-   //_create_command(":", &GodotVim::_enter_ex, EX);
+    //_create_command(":", &GodotVim::_enter_ex, EX);
 
 }
 
