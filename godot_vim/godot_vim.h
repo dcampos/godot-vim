@@ -4,6 +4,7 @@
 #include "reference.h"
 #include "editor/editor_plugin.h"
 #include "editor/plugins/script_editor_plugin.h"
+#include "motion.h"
 
 class GodotVim : public Reference {
     OBJ_TYPE(GodotVim, Reference);
@@ -43,20 +44,37 @@ class GodotVim : public Reference {
         cmdFunction function;
         CommandType type;
         VimMode context;
+        VimCommand(String binding, cmdFunction function, CommandType type, VimMode context)
+            : binding(binding), function(function), type(type), context(context) {}
+        VimCommand() {}
+    };
+
+    struct MotionCommand : VimCommand {
+        bool linewise;
+        MotionCommand() : linewise(true) {}
     };
 
     struct InputState {
-        VimCommand *operator_command;
-        VimCommand *current_command;
+        Command *operator_command;
+        Command *current_command;
         int operator_count;
         int repeat_count;
         String input_string;
     } input_state;
 
-    static Vector<String> command_bindings;
-    static Map<String, VimCommand> command_map;
-    static Map<String, VimCommand> normal_command_map;
-    static Map<String, VimCommand> visual_command_map;
+    struct MotionState {
+        Vector2 start;
+        Vector2 end;
+        bool linewise;
+        bool inclusive;
+    } motion_state;
+
+    Vector<String> command_bindings;
+    Map<String, Command*> command_map;
+    Map<String, Command*> normal_command_map;
+    Map<String, Command*> visual_command_map;
+
+    Motion *motion;
 
     Vector2 visual_start;
     int virtual_column;
@@ -72,17 +90,19 @@ class GodotVim : public Reference {
     // Helper methods
     void _set_vim_mode(VimMode mode);
     void _parse_command_input(const InputEventKey &p_event);
-    void _run_normal_command(VimCommand *p_cmd);
-    void _run_visual_command(VimCommand *p_cmd);
+    void _run_normal_command(Command *p_cmd);
+    void _run_visual_command(Command *p_cmd);
 
-    VimCommand * _find_command(String binding);
+    Command * _find_command(String binding);
+
+    void _setup_commands();
 
     bool _is_normal_command(const String &input);
     bool _is_visual_command(const String &input);
 
-    bool _map_contains_key(const String &input, Map<String, VimCommand> map);
+    bool _map_contains_key(const String &input, Map<String, Command*> map);
 
-    void _run_command(VimCommand *cmd);
+    void _run_command(Command *cmd);
 
     String _get_character(const InputEventKey &p_event);
 
@@ -151,6 +171,18 @@ class GodotVim : public Reference {
 
     void _check_virtual_column();
 
+    static void _setup_command_map();
+    static void _add_command(VimCommand *command);
+
+protected:
+    static void _bind_methods();
+    void disconnect_all();
+
+public:
+    void set_editor(CodeTextEditor *editor);
+
+    void _create_command(String binding, Command *cmd, VimMode context = NONE);
+
     String _get_current_line();
     String _get_line(int line);
     int _get_current_line_length();
@@ -168,18 +200,22 @@ class GodotVim : public Reference {
     int _selection_get_column_to();
     void _update_visual_selection();
 
-    static void _setup_command_map();
-    static void _create_command(String binding, cmdFunction function, CommandType type = MOTION, VimMode context = NONE);
-
-protected:
-    static void _bind_methods();
-    void disconnect_all();
-
-public:
-    void set_editor(CodeTextEditor *editor);
+    const InputState get_input_state();
 
     GodotVim();
     ~GodotVim();
+
+    static bool _is_text_char(CharType c);
+    static bool _is_symbol(CharType c);
+    static bool _is_char(CharType c);
+    static bool _is_number(CharType c);
+    static bool _is_hex_symbol(CharType c);
+    static bool _is_pair_right_symbol(CharType c);
+    static bool _is_pair_left_symbol(CharType c);
+    static bool _is_pair_symbol(CharType c);
+    static CharType _get_right_pair_symbol(CharType c);
+    static CharType _get_left_pair_symbol(CharType c);
+    static bool _is_space(CharType c);
 };
 
 class GodotVimPlugin : public EditorPlugin {

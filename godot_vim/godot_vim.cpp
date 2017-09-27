@@ -3,34 +3,32 @@
 #include "os/keyboard.h"
 #include "os/input_event.h"
 #include "editor/plugins/script_editor_plugin.h"
+#include "motion.h"
 
 // Some utility functions copied from text_edit.cpp
 
-static const int a = 0;
-
-static bool _is_text_char(CharType c) {
-
+bool GodotVim::_is_text_char(CharType c) {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_';
 }
 
-static bool _is_symbol(CharType c) {
+bool GodotVim::_is_symbol(CharType c) {
     return c != '_' && ((c >= '!' && c <= '/') || (c >= ':' && c <= '@') || (c >= '[' && c <= '`') || (c >= '{' && c <= '~'));
 }
 
-static bool _is_char(CharType c) {
+bool GodotVim::_is_char(CharType c) {
 
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
 }
 
-static bool _is_number(CharType c) {
+bool GodotVim::_is_number(CharType c) {
     return (c >= '0' && c <= '9');
 }
 
-static bool _is_hex_symbol(CharType c) {
+bool GodotVim::_is_hex_symbol(CharType c) {
     return ((c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'));
 }
 
-static bool _is_pair_right_symbol(CharType c) {
+bool GodotVim::_is_pair_right_symbol(CharType c) {
     return c == '"' ||
            c == '\'' ||
            c == ')' ||
@@ -38,7 +36,7 @@ static bool _is_pair_right_symbol(CharType c) {
            c == '}';
 }
 
-static bool _is_pair_left_symbol(CharType c) {
+bool GodotVim::_is_pair_left_symbol(CharType c) {
     return c == '"' ||
            c == '\'' ||
            c == '(' ||
@@ -46,11 +44,11 @@ static bool _is_pair_left_symbol(CharType c) {
            c == '{';
 }
 
-static bool _is_pair_symbol(CharType c) {
+bool GodotVim::_is_pair_symbol(CharType c) {
     return _is_pair_left_symbol(c) || _is_pair_right_symbol(c);
 }
 
-static CharType _get_right_pair_symbol(CharType c) {
+CharType GodotVim::_get_right_pair_symbol(CharType c) {
     if (c == '"')
         return '"';
     if (c == '\'')
@@ -64,7 +62,7 @@ static CharType _get_right_pair_symbol(CharType c) {
     return 0;
 }
 
-static CharType _get_left_pair_symbol(CharType c) {
+CharType GodotVim::_get_left_pair_symbol(CharType c) {
     if (c == '"')
         return '"';
     if (c == '\'')
@@ -80,7 +78,7 @@ static CharType _get_left_pair_symbol(CharType c) {
 
 // End of copied functions
 
-static bool _is_space(CharType c) {
+bool GodotVim::_is_space(CharType c) {
     return (c == ' ' || c == '\t');
 }
 
@@ -100,7 +98,7 @@ void GodotVim::_editor_input(const InputEvent &p_event) {
 
         if (ke.scancode == KEY_ESCAPE) {
             if (vim_mode == INSERT) {
-                _move_left();
+                _cursor_set_column(_cursor_get_column() - 1);
             } else if (vim_mode == NORMAL) {
                 input_state.repeat_count = 0;
                 input_state.input_string.clear();
@@ -120,14 +118,14 @@ void GodotVim::_parse_command_input(const InputEventKey &p_event) {
     if (vim_mode == NORMAL && _is_normal_command(input_state.input_string)) {
         print_line("running normal");
 
-        VimCommand *cmd = _find_command(input_state.input_string);
+        Command *cmd = _find_command(input_state.input_string);
 
         _run_normal_command(cmd);
 
     } else if (vim_mode == VISUAL && _is_visual_command(input_state.input_string)) {
         print_line("running visual");
 
-        VimCommand *cmd = _find_command(input_state.input_string);
+        Command *cmd = _find_command(input_state.input_string);
 
         _run_visual_command(cmd);
 
@@ -144,19 +142,19 @@ void GodotVim::_parse_command_input(const InputEventKey &p_event) {
     }
 }
 
-void GodotVim::_run_normal_command(VimCommand *p_cmd) {
-    if (p_cmd->type == OPERATOR) {
+void GodotVim::_run_normal_command(Command *p_cmd) {
+    if (p_cmd->is_operation()) {
         input_state.operator_command = p_cmd;
         input_state.operator_count = input_state.repeat_count;
         input_state.repeat_count = 0;
         input_state.input_string.clear();
 
-    } else if (p_cmd->type == MOTION && input_state.operator_command != NULL) {
+    } else if (p_cmd->is_motion() && input_state.operator_command != NULL) {
         print_line("running motion/operator command!");
 
-        VimCommand *op_cmd = input_state.operator_command;
+        Command *op_cmd = input_state.operator_command;
 
-        if (op_cmd->type == OPERATOR) {
+        if (op_cmd->is_operation()) {
 
             int cl = _cursor_get_line();
             int cc = _cursor_get_column();
@@ -165,11 +163,11 @@ void GodotVim::_run_normal_command(VimCommand *p_cmd) {
 
             text_edit->select(cl, cc, _cursor_get_line(), _cursor_get_column()+1);
 
-            cmdFunction op_func = op_cmd->function;
+            //cmdFunction op_func = op_cmd->function;
 
-            (this->*op_func)();
+            //(this->*op_func)();
 
-            text_edit->deselect();
+            //text_edit->deselect();
         }
         _clear_state();
     } else {
@@ -179,7 +177,7 @@ void GodotVim::_run_normal_command(VimCommand *p_cmd) {
     }
 }
 
-void GodotVim::_run_visual_command(VimCommand *p_cmd) {
+void GodotVim::_run_visual_command(Command *p_cmd) {
     int sl = text_edit->get_selection_from_line();
     int sc = text_edit->get_selection_from_column();
 
@@ -190,7 +188,7 @@ void GodotVim::_run_visual_command(VimCommand *p_cmd) {
 
     _run_command(p_cmd);
 
-    if (p_cmd->type == OPERATOR)
+    if (p_cmd->is_operation())
         _toggle_visual_mode();
 
     if (vim_mode == VISUAL) {
@@ -220,9 +218,13 @@ void GodotVim::_update_visual_selection() {
     }
 }
 
-bool GodotVim::_map_contains_key(const String &input, Map<String, VimCommand> map) {
+const GodotVim::InputState GodotVim::get_input_state() {
+    return input_state;
+}
 
-    Map<String, VimCommand>::Element *e = map.front();
+bool GodotVim::_map_contains_key(const String &input, Map<String, Command*> map) {
+
+    Map<String, Command*>::Element *e = map.front();
 
     if (e == NULL)
         return false;
@@ -238,13 +240,13 @@ bool GodotVim::_map_contains_key(const String &input, Map<String, VimCommand> ma
     return false;
 }
 
-GodotVim::VimCommand * GodotVim::_find_command(String binding) {
+Command * GodotVim::_find_command(String binding) {
     if (vim_mode == NORMAL && normal_command_map.has(binding)) {
-        return &normal_command_map.find(binding)->get();
+        return normal_command_map.find(binding)->get();
     } else if (vim_mode == VISUAL && visual_command_map.has(binding)) {
-        return &visual_command_map.find(binding)->get();
+        return visual_command_map.find(binding)->get();
     }
-    return &command_map.find(binding)->get();
+    return command_map.find(binding)->get();
 }
 
 bool GodotVim::_is_normal_command(const String &input) {
@@ -255,11 +257,10 @@ bool GodotVim::_is_visual_command(const String &input) {
     return command_map.has(input) || visual_command_map.has(input);
 }
 
-void GodotVim::_run_command(VimCommand *cmd) {
+void GodotVim::_run_command(Command *cmd) {
     print_line("_run_command");
-    cmdFunction func = cmd->function;
-    if (input_state.repeat_count == 0) input_state.repeat_count++;
-    (this->*func)();
+    //if (input_state.repeat_count == 0) input_state.repeat_count++;
+    cmd->run();
 }
 
 void GodotVim::_open_line(int line) {
@@ -328,329 +329,7 @@ int GodotVim::_get_line_count() {
     return text_edit->get_line_count();
 }
 
-void GodotVim::_move_left() {
-    _move_by_columns(-input_state.repeat_count);
-}
-
-void GodotVim::_move_right() {
-    _move_by_columns(input_state.repeat_count);
-}
-
-void GodotVim::_move_down() {
-    _move_by_lines(input_state.repeat_count);
-}
-
-void GodotVim::_move_up() {
-    _move_by_lines(-input_state.repeat_count);
-}
-
-void GodotVim::_move_to_line_start() {
-    _cursor_set_column(0);
-}
-
-void GodotVim::_move_to_line_end() {
-    _cursor_set_column(_get_current_line_length() - 1);
-}
-
 // Some util functions for word movement
-
-static bool _is_same_word(CharType a, CharType b) {
-    return ((_is_text_char(a) && _is_text_char(b))
-                || (_is_symbol(a) && b == a));
-}
-
-static bool _is_end_of_word(int col, String line) {
-    if (line.length() == 0) return false;
-
-    CharType char1 = line[col];
-
-    if ((!_is_space(char1)) && col >= line.length() - 1) return true;
-
-    CharType char2 = line[col + 1];
-
-    return ((_is_text_char(char1) && !_is_text_char(char2)) || (_is_symbol(char1) && char1 != char2));
-}
-
-static bool _is_end_of_big_word(int col, String line) {
-    if (line.length() == 0) return false;
-
-    CharType char1 = line[col];
-
-    if ((!_is_space(char1)) && col >= line.length() - 1) return true;
-
-    CharType char2 = line[col + 1];
-
-    return ((_is_text_char(char1) || _is_symbol(char1)) && _is_space(char2));
-}
-
-
-static bool _is_beginning_of_word(int col, String line) {
-    if (line.length() == 0) return true;
-    if (_is_space(line[col])) return false;
-    if (col == 0) return true;
-
-    CharType char1 = line[col - 1];
-    CharType char2 = line[col];
-
-    return (!_is_text_char(char1) && _is_text_char(char2)) || (_is_symbol(char2) && char2 != char1);
-}
-
-static bool _is_beginning_of_big_word(int col, String line) {
-    if (line.length() == 0) return false;
-    if (_is_space(line[col])) return false;
-    if (col == 0) return true;
-
-    CharType char1 = line[col - 1];
-    CharType char2 = line[col];
-
-    return _is_space(char1) && (_is_text_char(char2) || _is_symbol(char2));
-}
-
-void GodotVim::_move_forward(GodotVim::matchFunction function) {
-    int next_cc = _cursor_get_column() + 1;
-    int next_cl = _cursor_get_line();
-
-    String line_text = _get_line(next_cl);
-
-    for (int i = next_cl; i < text_edit->get_line_count(); i++) {
-        line_text = _get_line(i);
-
-        if (line_text.length() == 0 || next_cc >= line_text.length()) {
-            next_cc = 0;
-            continue;
-        }
-
-        for (int j = next_cc; j < line_text.length(); j++) {
-            if ((function)(j, line_text)) {
-                print_line("setting cursor to " + itos(j) + ", " + itos(i));
-                _cursor_set(i, j);
-                return;
-            }
-        }
-    }
-}
-
-void GodotVim::_move_backward(GodotVim::matchFunction function) {
-    int next_cc = _cursor_get_column() - 1;
-    int next_cl = _cursor_get_line();
-
-    String line_text = _get_line(next_cl);
-
-    bool needs_cc = false;
-
-    for (int i = next_cl; i >= 0; i--) {
-        line_text = _get_line(i);
-
-        if (needs_cc) next_cc = line_text.length() - 1;
-
-        if (line_text.length() == 0) {
-            needs_cc = true;
-            continue;
-        }
-
-        for (int j = next_cc; j >= 0; j--) {
-            if ((function)(j, line_text)) {
-                print_line("setting cursor to " + itos(j) + ", " + itos(i));
-                _cursor_set_line(i);
-                _cursor_set_column(j);
-                return;
-            }
-        }
-
-        needs_cc = true;
-    }
-}
-
-void GodotVim::_move_to_first_non_blank(int line) {
-    String line_text = _get_line(line);
-    if (_cursor_get_line() != line)
-        _cursor_set_line(line);
-    for (int i = 0; i < line_text.length(); i++) {
-        CharType c = line_text[i];
-        if (!_is_space(c)) {
-                _cursor_set_column(i);
-                return;
-        }
-    }
-}
-
-void GodotVim::_move_word_right() {
-    for (int i = 0; i < input_state.repeat_count; i++) {
-        _move_forward(&_is_beginning_of_word);
-    }
-}
-
-void GodotVim::_move_word_right_big() {
-    for (int i = 0; i < input_state.repeat_count; i++) {
-        _move_forward(&_is_beginning_of_big_word);
-    }
-}
-
-void GodotVim::_move_word_end() {
-    for (int i = 0; i < input_state.repeat_count; i++) {
-        _move_forward(&_is_end_of_word);
-    }
-}
-
-void GodotVim::_move_word_end_big() {
-    for (int i = 0; i < input_state.repeat_count; i++) {
-        _move_forward(&_is_end_of_big_word);
-    }
-}
-
-void GodotVim::_move_word_end_backward() {
-    for (int i = 0; i < input_state.repeat_count; i++) {
-        _move_backward(&_is_end_of_word);
-    }
-}
-
-void GodotVim::_move_word_end_big_backward() {
-    for (int i = 0; i < input_state.repeat_count; i++) {
-        _move_backward(&_is_end_of_big_word);
-    }
-}
-
-void GodotVim::_move_word_beginning() {
-    for (int i = 0; i < input_state.repeat_count; i++) {
-        _move_backward(&_is_beginning_of_word);
-    }
-}
-
-void GodotVim::_move_word_beginning_big() {
-    for (int i = 0; i < input_state.repeat_count; i++) {
-        _move_backward(&_is_beginning_of_big_word);
-    }
-}
-
-void GodotVim::_move_paragraph_up() {
-    int next_cl = _cursor_get_line();
-
-    bool has_text = false;
-
-    for (int i = next_cl; i >= 0; i--) {
-        String line_text = _get_line(i);
-        if (line_text.size() == 0) {
-            if (has_text) {
-                _cursor_set(i, 0);
-                return;
-            }
-        } else {
-            has_text = true;
-        }
-    }
-}
-
-void GodotVim::_move_paragraph_down() {
-    int next_cl = _cursor_get_line();
-
-    bool has_text = false;
-
-    for (int i = next_cl; i < _get_line_count(); i++) {
-        String line_text = _get_line(i);
-        if (line_text.size() == 0) {
-            if (has_text) {
-                _cursor_set(i, 0);
-                return;
-            }
-        } else {
-            has_text = true;
-        }
-    }
-}
-
-void GodotVim::_move_to_matching_pair() {
-    String line_text = _get_line(_cursor_get_line());
-    int col = _cursor_get_column();
-    CharType c = line_text[col];
-    if (_is_pair_left_symbol(c)) {
-        CharType m = _get_right_pair_symbol(c);
-
-        col++;
-        int count = 1;
-
-        for (int i = _cursor_get_line(); i < _get_line_count(); i++) {
-            line_text = _get_line(i);
-            for (int j = col; j < line_text.length(); j++) {
-                CharType cur = line_text[j];
-                if (cur == c) {
-                    count++;
-                } else if (cur == m) {
-                    count--;
-                    if (count == 0) {
-                        _cursor_set(i, j);
-                        return;
-                    }
-                }
-            }
-            col = 0;
-        }
-    } else if (_is_pair_right_symbol(c)) {
-        CharType m = _get_left_pair_symbol(c);
-
-        col--;
-        int count = 1;
-        bool needs_col = false;
-
-        for (int i = _cursor_get_line(); i >= 0; i--) {
-            line_text = _get_line(i);
-
-            if (needs_col) col = line_text.length();
-
-            for (int j = col; j >= 0; j--) {
-                CharType cur = line_text[j];
-                if (cur == c) {
-                    count++;
-                } else if (cur == m) {
-                    count--;
-                    if (count == 0) {
-                        _cursor_set(i, j);
-                        return;
-                    }
-                }
-            }
-            needs_col = true;
-        }
-    }
-}
-
-void GodotVim::_move_to_first_non_blank() {
-    _move_to_first_non_blank(_cursor_get_line());
-}
-
-void GodotVim::_move_to_beginning_of_last_line() {
-    _move_to_first_non_blank(_get_line_count() - 1);
-}
-
-void GodotVim::_move_to_beginning_of_first_line() {
-    _move_to_first_non_blank(0);
-}
-
-void GodotVim::_move_to_beginning_of_previous_line() {
-    if (_cursor_get_line() > 0) {
-        _move_to_first_non_blank(_cursor_get_line() - 1);
-    }
-}
-
-void GodotVim::_move_to_beginning_of_next_line() {
-    if (_cursor_get_line() < _get_line_count() - 1) {
-        _move_to_first_non_blank(_cursor_get_line() + 1);
-    }
-}
-
-void GodotVim::_move_to_last_searched_char() {
-
-}
-
-void GodotVim::_move_to_last_searched_char_backward() {
-
-}
-
-void GodotVim::_move_to_column() {
-    String line_text = _get_current_line();
-    if (input_state.repeat_count - 1 < line_text.length()) {
-        _cursor_set_column(input_state.repeat_count - 1);
-    }
-}
 
 void GodotVim::_enter_insert_mode() {
     _set_vim_mode(INSERT);
@@ -833,14 +512,38 @@ void GodotVim::_setup_editor() {
     }
 }
 
-Map<String, GodotVim::VimCommand> GodotVim::command_map;
-Map<String, GodotVim::VimCommand> GodotVim::normal_command_map;
-Map<String, GodotVim::VimCommand> GodotVim::visual_command_map;
+void GodotVim::_setup_commands() {
+    _create_command("h", Motion::create_motion(this, 0, &Motion::_move_left));
+    _create_command("j", Motion::create_motion(this, 0, &Motion::_move_down));
+    _create_command("k", Motion::create_motion(this, 0, &Motion::_move_up));
+    _create_command("l", Motion::create_motion(this, 0, &Motion::_move_right));
+    _create_command("0", Motion::create_motion(this, 0, &Motion::_move_to_line_start));
+    _create_command("$", Motion::create_motion(this, 0, &Motion::_move_to_line_end));
+    _create_command("^", Motion::create_motion(this, 0, &Motion::_move_to_first_non_blank));
+    _create_command("G", Motion::create_motion(this, 0, &Motion::_move_to_beginning_of_first_line));
+    _create_command("gg", Motion::create_motion(this, 0, &Motion::_move_to_beginning_of_last_line));
+    _create_command("-", Motion::create_motion(this, 0, &Motion::_move_to_beginning_of_previous_line));
+    _create_command("+", Motion::create_motion(this, 0, &Motion::_move_to_beginning_of_next_line));
+    _create_command(";", Motion::create_motion(this, 0, &Motion::_move_to_last_searched_char));
+    _create_command(",", Motion::create_motion(this, 0, &Motion::_move_to_last_searched_char_backward));
+    _create_command("|", Motion::create_motion(this, 0, &Motion::_move_to_column));
+    _create_command("w", Motion::create_motion(this, 0, &Motion::_move_word_right));
+    _create_command("W", Motion::create_motion(this, 0, &Motion::_move_word_right_big));
+    _create_command("e", Motion::create_motion(this, 0, &Motion::_move_word_end));
+    _create_command("E", Motion::create_motion(this, 0, &Motion::_move_word_end_big));
+    _create_command("ge", Motion::create_motion(this, 0, &Motion::_move_word_end_backward));
+    _create_command("gE", Motion::create_motion(this, 0, &Motion::_move_word_end_big_backward));
+    _create_command("b", Motion::create_motion(this, 0, &Motion::_move_word_beginning));
+    _create_command("B", Motion::create_motion(this, 0, &Motion::_move_word_beginning_big));
+    _create_command("}", Motion::create_motion(this, 0, &Motion::_move_paragraph_down));
+    _create_command("{", Motion::create_motion(this, 0, &Motion::_move_paragraph_up));
+    _create_command("%", Motion::create_motion(this, 0, &Motion::_move_to_matching_pair));
+}
 
 void GodotVim::_setup_command_map() {
 
-    if (command_map.size() > 0) return;
-
+    //if (command_map.size() > 0) return;
+/*
     _create_command("l", &GodotVim::_move_right);
     _create_command("h", &GodotVim::_move_left);
     _create_command("j", &GodotVim::_move_down);
@@ -893,7 +596,7 @@ void GodotVim::_setup_command_map() {
     //_create_command("N", &GodotVim::_find_previous, ACTION);
     //_create_command("x", &GodotVim::_delete_char, ACTION);
     //_create_command("X", &GodotVim::_delete_previous_char, ACTION);
-    //_create_command("D", &GodotVim::_delete_to_eol, ACTION, COMMAND);
+    //_create_command("D", &GodotVim::_delete_to_eol, ACTION, NORMAL);
     //_create_command("D", &GodotVim::_delete_text, ACTION, VISUAL);
     // ~
     // ~
@@ -913,7 +616,7 @@ void GodotVim::_setup_command_map() {
     //_create_command("zz", &GodotVim::_scroll_to_center, ACTION);
     //_create_command("z.", &GodotVim::_scroll_to_center_first_non_blank, ACTION);
     //_create_command("zt", &GodotVim::_scroll_to_top, ACTION);
-    //_create_command("z<CR>", &GodotVim::_scroll_to_top_fist_non_blank, ACTION);
+    //_create_command("z<CR>", &GodotVim::_scroll_to_top_first_non_blank, ACTION);
     //_create_command("z-", &GodotVim::_scroll_to_bottom_, ACTION);
     //_create_command("zb", &GodotVim::_scroll_to_bottom_first_non_blank, ACTION);
     //_create_command(".", &GodotVim::_repeat_last_edit, ACTION);
@@ -933,11 +636,11 @@ void GodotVim::_setup_command_map() {
     // g#
 
     //_create_command(":", &GodotVim::_enter_ex, EX);
+    */
 
 }
 
-void GodotVim::_create_command(String binding, cmdFunction function, CommandType type, VimMode context) {
-    VimCommand cmd = {binding, function, type, context};
+void GodotVim::_create_command(String binding, Command *cmd, VimMode context) {
     if (context == NONE) {
         command_map.insert(binding, cmd);
     } else if (context == NORMAL) {
@@ -969,7 +672,8 @@ GodotVim::GodotVim() {
     vim_mode = NORMAL;
     virtual_column = 0;
     visual_start = Vector2();
-    _setup_command_map();
+    motion = Motion::create_motion(this, 0, &Motion::_move_to_first_non_blank);
+    _setup_commands();
 }
 
 GodotVim::~GodotVim() {
@@ -1049,5 +753,4 @@ GodotVimPlugin::~GodotVimPlugin() {
 
     if (tab_container != NULL)
         tab_container->disconnect("tab_changed", this, "_tabs_changed");
-
 }
