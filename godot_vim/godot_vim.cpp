@@ -224,17 +224,11 @@ const GodotVim::InputState GodotVim::get_input_state() {
 
 bool GodotVim::_map_contains_key(const String &input, Map<String, Command*> map) {
 
-    Map<String, Command*>::Element *e = map.front();
-
-    if (e == NULL)
-        return false;
-
-    while (e->next() != NULL) {
+    for (Map<String, Command*>::Element *e = map.front(); e; e = e->next()) {
         String k = e->key();
         if (k.begins_with(input)) {
             return true;
         }
-        e = e->next();
     }
 
     return false;
@@ -751,6 +745,6 @@ GodotVimPlugin::GodotVimPlugin(EditorNode *p_node) {
 
 GodotVimPlugin::~GodotVimPlugin() {
 
-    if (tab_container != NULL)
+    if (tab_container)
         tab_container->disconnect("tab_changed", this, "_tabs_changed");
 }
