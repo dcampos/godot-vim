@@ -4,6 +4,8 @@
 #include "os/input_event.h"
 #include "editor/plugins/script_editor_plugin.h"
 #include "motion.h"
+#include "action.h"
+#include "operation.h"
 
 // Some utility functions copied from text_edit.cpp
 
@@ -163,11 +165,9 @@ void GodotVim::_run_normal_command(Command *p_cmd) {
 
             text_edit->select(cl, cc, _cursor_get_line(), _cursor_get_column()+1);
 
-            //cmdFunction op_func = op_cmd->function;
+            _run_command(op_cmd);
 
-            //(this->*op_func)();
-
-            //text_edit->deselect();
+            text_edit->deselect();
         }
         _clear_state();
     } else {
@@ -189,7 +189,7 @@ void GodotVim::_run_visual_command(Command *p_cmd) {
     _run_command(p_cmd);
 
     if (p_cmd->is_operation())
-        _toggle_visual_mode();
+        _set_vim_mode(NORMAL);
 
     if (vim_mode == VISUAL) {
         _update_visual_selection();
@@ -257,10 +257,11 @@ void GodotVim::_run_command(Command *cmd) {
     cmd->run();
 }
 
-void GodotVim::_open_line(int line) {
-    _move_by_lines(line);
-    _cursor_set_column(_get_current_line_length());
-    text_edit->insert_text_at_cursor("\n");
+String GodotVim::_get_character(const InputEventKey &p_event) {
+    String character = String::chr(wchar_t(p_event.unicode));
+    if (p_event.mod.control)
+        character = "<C-" + character.to_upper() + ">";
+    return character;
 }
 
 int GodotVim::_find_forward(const String &p_string) {
@@ -275,11 +276,6 @@ int GodotVim::_find_backward(const String &p_string) {
     if (n >= 0) {
         _cursor_set_column(n);
     }
-}
-
-String GodotVim::_get_character(const InputEventKey &p_event) {
-    String character = String::chr(wchar_t(p_event.unicode));
-    return character;
 }
 
 void GodotVim::_editor_focus_enter() {
@@ -307,6 +303,15 @@ int GodotVim::_cursor_get_column() {
     text_edit->cursor_get_column();
 }
 
+Motion::Range GodotVim::get_selection() {
+    return Motion::Range(
+                text_edit->get_selection_from_line(),
+                text_edit->get_selection_from_column(),
+                text_edit->get_selection_to_line(),
+                text_edit->get_selection_to_column()
+    );
+}
+
 int GodotVim::_get_current_line_length() {
     return text_edit->get_line(text_edit->cursor_get_line()).length();
 }
@@ -323,123 +328,15 @@ int GodotVim::_get_line_count() {
     return text_edit->get_line_count();
 }
 
+void GodotVim::set_line(int line, String text) {
+    text_edit->set_line(line, text);
+}
+
+TextEdit * GodotVim::get_text_edit() {
+    return text_edit;
+}
+
 // Some util functions for word movement
-
-void GodotVim::_enter_insert_mode() {
-    _set_vim_mode(INSERT);
-}
-
-void GodotVim::_enter_insert_mode_append() {
-    _set_vim_mode(INSERT);
-    _cursor_set_column(_cursor_get_column() + 1);
-}
-
-void GodotVim::_toggle_visual_mode() {
-    if (vim_mode == VISUAL) {
-        _set_vim_mode(NORMAL);
-    } else {
-        visual_type = SELECT_CHARS;
-        _set_vim_mode(VISUAL);
-    }
-}
-
-void GodotVim::_toggle_visual_mode_line() {
-    if (vim_mode == VISUAL && visual_type == SELECT_LINES) {
-        _set_vim_mode(NORMAL);
-    } else {
-        visual_type = SELECT_LINES;
-        _set_vim_mode(VISUAL);
-    }
-}
-
-void GodotVim::_open_line_below() {
-    _open_line(0);
-    _set_vim_mode(INSERT);
-}
-
-void GodotVim::_open_line_above() {
-    _open_line(-1);
-    _set_vim_mode(INSERT);
-}
-
-
-void GodotVim::_delete_text() {
-    text_edit->cut();
-}
-
-void GodotVim::_change_text() {
-    text_edit->cut();
-    _enter_insert_mode();
-}
-
-void GodotVim::_change_case(CaseOperation option) {
-    int ssl = text_edit->get_selection_from_line();
-    int sel = text_edit->get_selection_to_line();
-    int ssc = text_edit->get_selection_from_column();
-    int sec = text_edit->get_selection_to_column();
-
-    text_edit->begin_complex_operation();
-    for (int i = ssl; i <= sel; i++) {
-        String line_text = _get_line(i);
-        for (int j = (i == ssl ? ssc : 0); j < (i == sel ? sec : line_text.length()); j++) {
-            switch (option) {
-
-            case TO_LOWER:
-                line_text[j] = String::char_lowercase(line_text[j]);
-                break;
-
-            case TO_UPPER:
-                line_text[j] = String::char_uppercase(line_text[j]);
-                break;
-
-            default:
-                if (line_text.substr(j, 1).match("[a-z]"))
-                    line_text[j] =  String::char_uppercase(line_text[j]);
-                else
-                    line_text[j] =  String::char_lowercase(line_text[j]);
-                break;
-            }
-        }
-        text_edit->set_line(i, line_text);
-    }
-    text_edit->end_complex_operation();
-}
-
-void GodotVim::_change_case() {
-    _change_case(INVERT);
-}
-
-void GodotVim::_change_to_lower_case() {
-    _change_case(TO_LOWER);
-}
-
-void GodotVim::_change_to_upper_case() {
-    _change_case(TO_UPPER);
-}
-
-void GodotVim::_indent_text() {
-    int line = _cursor_get_line();
-    String text_line = _get_line(line);
-    text_line = '\t' + text_line;
-    text_edit->set_line(line, text_line);
-}
-
-void GodotVim::_unindent_text() {
-    int line = _cursor_get_line();
-    String text_line = _get_line(line);
-    if (text_line.begins_with("\t")) {
-        text_line.erase(0, 1);
-        text_edit->set_line(line, text_line);
-    }
-}
-
-void GodotVim::_undo() {
-    text_edit->undo();
-}
-
-void GodotVim::_redo() {
-    text_edit->redo();
-}
 
 void GodotVim::_goto_next_tab() {
     TabContainer *tab_container = text_edit->get_parent()->get_parent()->cast_to<TabContainer>();
@@ -471,9 +368,11 @@ void GodotVim::_check_virtual_column() {
     }
 }
 
-void GodotVim::_set_vim_mode(VimMode mode) {
-    vim_mode = mode;
+GodotVim::VimMode GodotVim::_get_vim_mode() {
+    return vim_mode;
+}
 
+void GodotVim::_set_vim_mode(VimMode mode) {
     switch (mode) {
 
     case NORMAL:
@@ -489,14 +388,26 @@ void GodotVim::_set_vim_mode(VimMode mode) {
         break;
 
     case VISUAL:
-        visual_start.x = _cursor_get_column();
-        visual_start.y = _cursor_get_line();
+        if (vim_mode != VISUAL) {
+            visual_start.x = _cursor_get_column();
+            visual_start.y = _cursor_get_line();
+        }
         _update_visual_selection();
         break;
 
     default:
         break;
     }
+
+    vim_mode = mode;
+}
+
+GodotVim::VisualType GodotVim::_get_visual_type() {
+    return visual_type;
+}
+
+void GodotVim::_set_visual_type(GodotVim::VisualType vtype) {
+    visual_type = vtype;
 }
 
 void GodotVim::_setup_editor() {
@@ -514,8 +425,8 @@ void GodotVim::_setup_commands() {
     _create_command("0", Motion::create_motion(this, 0, &Motion::_move_to_line_start));
     _create_command("$", Motion::create_motion(this, 0, &Motion::_move_to_line_end));
     _create_command("^", Motion::create_motion(this, 0, &Motion::_move_to_first_non_blank));
-    _create_command("G", Motion::create_motion(this, 0, &Motion::_move_to_beginning_of_first_line));
-    _create_command("gg", Motion::create_motion(this, 0, &Motion::_move_to_beginning_of_last_line));
+    _create_command("gg", Motion::create_motion(this, 0, &Motion::_move_to_beginning_of_first_line));
+    _create_command("G", Motion::create_motion(this, 0, &Motion::_move_to_beginning_of_last_line));
     _create_command("-", Motion::create_motion(this, 0, &Motion::_move_to_beginning_of_previous_line));
     _create_command("+", Motion::create_motion(this, 0, &Motion::_move_to_beginning_of_next_line));
     _create_command(";", Motion::create_motion(this, 0, &Motion::_move_to_last_searched_char));
@@ -532,67 +443,57 @@ void GodotVim::_setup_commands() {
     _create_command("}", Motion::create_motion(this, 0, &Motion::_move_paragraph_down));
     _create_command("{", Motion::create_motion(this, 0, &Motion::_move_paragraph_up));
     _create_command("%", Motion::create_motion(this, 0, &Motion::_move_to_matching_pair));
+    _create_command("n", Motion::create_motion(this, 0, &Motion::find_next));
+    _create_command("N", Motion::create_motion(this, 0, &Motion::find_previous));
+
+    // ACTIONS
+    _create_command("i", Action::create_action(this, 0, &Action::enter_insert_mode));
+    _create_command("a", Action::create_action(this, 0, &Action::enter_insert_mode_append));
+    _create_command("u", Action::create_action(this, 0, &Action::undo));
+    _create_command("<C-R>", Action::create_action(this, 0, &Action::redo));
+    _create_command("v", Action::create_action(this, 0, &Action::toggle_visual_mode));
+    _create_command("V", Action::create_action(this, 0, &Action::toggle_visual_mode_line));
+    _create_command("o", Action::create_action(this, 0, &Action::open_line_below));
+    _create_command("O", Action::create_action(this, 0, &Action::open_line_above));
+
+    _create_command("D", Action::create_action(this, 0, &Action::delete_to_eol), NORMAL);
+    _create_command("C", Action::create_action(this, 0, &Action::change_to_eol), NORMAL);
+    _create_command("zz", Action::create_action(this, 0, &Action::scroll_to_center));
+
+    // SEARCH
+    _create_command("*", Motion::create_motion(this, 0, &Motion::search_word_under_cursor));
+    _create_command("#", Motion::create_motion(this, 0, &Motion::search_word_under_cursor_backward));
+
+    // OPERATIONS
+    _create_command("x", Operation::create_operation(this, 0, &Operation::delete_char));
+    _create_command("X", Operation::create_operation(this, 0, &Operation::delete_previous_char));
+    _create_command("d", Operation::create_operation(this, 0, &Operation::delete_text));
+    _create_command("D", Operation::create_operation(this, 0, &Operation::delete_text), VISUAL);
+
+    _create_command("y", Operation::create_operation(this, 0, &Operation::yank));
+    _create_command("c", Operation::create_operation(this, 0, &Operation::change_text));
+    _create_command("C", Operation::create_operation(this, 0, &Operation::change_lines), VISUAL);
+
+    _create_command(">", Operation::create_operation(this, 0, &Operation::indent_text));
+    _create_command("<", Operation::create_operation(this, 0, &Operation::unindent_text));
+    _create_command("=", Operation::create_operation(this, 0, &Operation::reindent_text));
+    _create_command("g~", Operation::create_operation(this, 0, &Operation::toggle_case));
+    _create_command("gu", Operation::create_operation(this, 0, &Operation::to_lower));
+    _create_command("u", Operation::create_operation(this, 0, &Operation::to_lower), VISUAL);
+    _create_command("gU", Operation::create_operation(this, 0, &Operation::to_upper));
+    _create_command("U", Operation::create_operation(this, 0, &Operation::to_upper), VISUAL);
 }
 
 void GodotVim::_setup_command_map() {
 
     //if (command_map.size() > 0) return;
 /*
-    _create_command("l", &GodotVim::_move_right);
-    _create_command("h", &GodotVim::_move_left);
-    _create_command("j", &GodotVim::_move_down);
-    _create_command("k", &GodotVim::_move_up);
-    _create_command("0", &GodotVim::_move_to_line_start);
-    _create_command("$", &GodotVim::_move_to_line_end);
-
-    _create_command("^", &GodotVim::_move_to_first_non_blank);
-    _create_command("G", &GodotVim::_move_to_beginning_of_last_line);
-    _create_command("gg", &GodotVim::_move_to_beginning_of_first_line);
-    _create_command("-", &GodotVim::_move_to_beginning_of_previous_line);
-    _create_command("+", &GodotVim::_move_to_beginning_of_next_line);
-    _create_command(";", &GodotVim::_move_to_last_searched_char);
-    _create_command(",", &GodotVim::_move_to_last_searched_char_backward);
-    _create_command("|", &GodotVim::_move_to_column);
-
-    _create_command("w", &GodotVim::_move_word_right);
-    _create_command("W", &GodotVim::_move_word_right_big);
-    _create_command("e", &GodotVim::_move_word_end);
-    _create_command("E", &GodotVim::_move_word_end_big);
-    _create_command("ge", &GodotVim::_move_word_end_backward);
-    _create_command("gE", &GodotVim::_move_word_end_big_backward);
-    _create_command("b", &GodotVim::_move_word_beginning);
-    _create_command("B", &GodotVim::_move_word_beginning_big);
-    _create_command("}", &GodotVim::_move_paragraph_down);
-    _create_command("{", &GodotVim::_move_paragraph_up);
-    _create_command("%", &GodotVim::_move_to_matching_pair);
-    _create_command("o", &GodotVim::_open_line_below);
-    _create_command("O", &GodotVim::_open_line_above);
-    _create_command("i", &GodotVim::_enter_insert_mode, ACTION, NORMAL);
-    _create_command("a", &GodotVim::_enter_insert_mode_append, ACTION, NORMAL);
     //_create_command("A", &GodotVim::_enter_insert_mode_after_eol, ACTION);
     //_create_command("A", &GodotVim::_enter_insert_mode_after_selection, ACTION, VISUAL);
     //_create_command("I", &GodotVim::_enter_insert_mode_first_non_blank, ACTION);
     //_create_command("I", &GodotVim::_enter_insert_mode_before_selection, ACTION, VISUAL);
-    _create_command("v", &GodotVim::_toggle_visual_mode, ACTION);
-    _create_command("V", &GodotVim::_toggle_visual_mode_line, ACTION);
     //_create_command("<C-v>", &GodotVim::_toggle_visual_mode_block, ACTION);
 
-    _create_command("d", &GodotVim::_delete_text, OPERATOR);
-    //_create_command("y", &GodotVim::_yank_text, OPERATOR);
-    _create_command("c", &GodotVim::_change_text, OPERATOR);
-    _create_command(">", &GodotVim::_indent_text, OPERATOR);
-    _create_command("<", &GodotVim::_unindent_text, OPERATOR);
-    _create_command("g~", &GodotVim::_change_case, OPERATOR);
-    _create_command("gu", &GodotVim::_change_to_lower_case, OPERATOR);
-    _create_command("gU", &GodotVim::_change_to_upper_case, OPERATOR);
-    //_create_command("=", &GodotVim::_indent_text, OPERATOR);
-    //_create_command("n", &GodotVim::_find_next, ACTION);
-    //_create_command("N", &GodotVim::_find_previous, ACTION);
-    //_create_command("x", &GodotVim::_delete_char, ACTION);
-    //_create_command("X", &GodotVim::_delete_previous_char, ACTION);
-    //_create_command("D", &GodotVim::_delete_to_eol, ACTION, NORMAL);
-    //_create_command("D", &GodotVim::_delete_text, ACTION, VISUAL);
-    // ~
     // ~
     //_create_command("gt", &GodotVim::_goto_next_tab, ACTION);
     //_create_command("gT", &GodotVim::_goto_previous_tab, ACTION);
@@ -602,12 +503,6 @@ void GodotVim::_setup_command_map() {
     //_create_command("P", &GodotVim::_paste_before, ACTION);
     //_create_command("r", &GodotVim::_replace_char, ACTION);
 
-    _create_command("u", &GodotVim::_undo, ACTION);
-    _create_command("u", &GodotVim::_change_to_lower_case, OPERATOR, VISUAL);
-    //_create_command("<C-r>", &GodotVim::_redo, ACTION);
-    _create_command("U", &GodotVim::_change_to_upper_case, OPERATOR, VISUAL);
-
-    //_create_command("zz", &GodotVim::_scroll_to_center, ACTION);
     //_create_command("z.", &GodotVim::_scroll_to_center_first_non_blank, ACTION);
     //_create_command("zt", &GodotVim::_scroll_to_top, ACTION);
     //_create_command("z<CR>", &GodotVim::_scroll_to_top_first_non_blank, ACTION);
@@ -621,11 +516,8 @@ void GodotVim::_setup_command_map() {
     //_create_command("a<char>", &GodotVim::_text_object, MOTION);
     //_create_command("i<char>", &GodotVim::_text_object_inner, MOTION);
 
-    //
     //_create_command("/", &GodotVim::_start_search, SEARCH);
     //_create_command("?", &GodotVim::_start_search_backward, SEARCH);
-    //_create_command("*", &GodotVim::_search_word_under_cursor, SEARCH);
-    //_create_command("#", &GodotVim::_search_word_under_cursor_backward, SEARCH);
     // g*
     // g#
 

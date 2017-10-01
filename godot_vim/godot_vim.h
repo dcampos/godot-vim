@@ -7,23 +7,29 @@
 #include "motion.h"
 
 class GodotVim : public Reference {
-    OBJ_TYPE(GodotVim, Reference);
-
-    typedef void (GodotVim::* cmdFunction) ();
-    typedef bool (* matchFunction) (int, String);
-
+public:
     enum VimMode {
         NORMAL,
         INSERT,
         VISUAL,
         NONE
-    } vim_mode;
+    };
 
     enum VisualType {
         SELECT_CHARS,
         SELECT_LINES,
         SELECT_BLOCK
-    } visual_type;
+    };
+
+private:
+    OBJ_TYPE(GodotVim, Reference);
+
+    typedef void (GodotVim::* cmdFunction) ();
+    typedef bool (* matchFunction) (int, String);
+
+    VimMode vim_mode;
+
+    VisualType visual_type;
 
     enum CommandType {
         MOTION,
@@ -31,12 +37,6 @@ class GodotVim : public Reference {
         ACTION,
         SEARCH,
         EX
-    };
-
-    enum CaseOperation {
-        TO_LOWER,
-        TO_UPPER,
-        INVERT
     };
 
     struct VimCommand {
@@ -88,7 +88,6 @@ class GodotVim : public Reference {
     void _editor_input(const InputEvent &p_event);
 
     // Helper methods
-    void _set_vim_mode(VimMode mode);
     void _parse_command_input(const InputEventKey &p_event);
     void _run_normal_command(Command *p_cmd);
     void _run_visual_command(Command *p_cmd);
@@ -106,33 +105,6 @@ class GodotVim : public Reference {
 
     String _get_character(const InputEventKey &p_event);
 
-    // Action commands
-    void _move_left();
-    void _move_right();
-    void _move_down();
-    void _move_up();
-    void _move_to_line_end();
-    void _move_to_line_start();
-    void _move_word_right();
-    void _move_word_right_big();
-    void _move_word_beginning();
-    void _move_word_beginning_big();
-    void _move_word_end();
-    void _move_word_end_big();
-    void _move_word_end_backward();
-    void _move_word_end_big_backward();
-    void _move_paragraph_up();
-    void _move_paragraph_down();
-    void _move_to_matching_pair();
-    void _move_to_first_non_blank();
-    void _move_to_beginning_of_last_line();
-    void _move_to_beginning_of_first_line();
-    void _move_to_beginning_of_previous_line();
-    void _move_to_beginning_of_next_line();
-    void _move_to_last_searched_char();
-    void _move_to_last_searched_char_backward();
-    void _move_to_column();
-
     void _enter_insert_mode();
     void _enter_insert_mode_append();
 
@@ -141,17 +113,6 @@ class GodotVim : public Reference {
 
     void _open_line_above();
     void _open_line_below();
-
-    void _delete_text();
-    void _change_text();
-    void _change_case();
-    void _change_to_lower_case();
-    void _change_to_upper_case();
-    void _indent_text();
-    void _unindent_text();
-
-    void _undo();
-    void _redo();
 
     void _goto_next_tab();
     void _goto_previous_tab();
@@ -166,7 +127,6 @@ class GodotVim : public Reference {
     void _move_by_columns(int cols);
     void _move_by_lines(int lines);
     void _open_line(int line);
-    void _change_case(CaseOperation option);
     Point2 _find_next_word();
 
     void _check_virtual_column();
@@ -183,6 +143,14 @@ public:
 
     void _create_command(String binding, Command *cmd, VimMode context = NONE);
 
+    void _set_vim_mode(VimMode mode);
+    VimMode _get_vim_mode();
+    void _set_visual_type(VisualType vtype);
+    VisualType _get_visual_type();
+
+    void _undo();
+    void _redo();
+
     String _get_current_line();
     String _get_line(int line);
     int _get_current_line_length();
@@ -198,7 +166,13 @@ public:
     int _selection_get_column_from();
     int _selection_get_line_to();
     int _selection_get_column_to();
+
+    Motion::Range get_selection();
+
     void _update_visual_selection();
+
+    void set_line(int line, String text);
+    TextEdit *get_text_edit();
 
     const InputState get_input_state();
 

@@ -3,13 +3,23 @@
 
 #include "reference.h"
 
+class GodotVim;
 class Motion;
+class Action;
+class Operation;
 
 class Command : public Reference {
+
+protected:
+    GodotVim* vim;
 
 public:
 
     virtual Motion *get_motion() { return NULL; }
+
+    virtual Action *get_action() { return NULL; }
+
+    virtual Operation *get_operation() { return NULL; }
 
     virtual bool is_motion() { return false; }
 
@@ -19,7 +29,7 @@ public:
 
     virtual void run() = 0;
 
-    Command();
+    Command(GodotVim *vim);
 
 };
 

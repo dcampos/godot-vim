@@ -278,6 +278,29 @@ Motion::Pos Motion::_move_to_column() {
     return Pos(vim->_cursor_get_line(), vim->_cursor_get_column());
 }
 
+Motion::Pos Motion::search_word_under_cursor() {
+    String word = vim->get_text_edit()->get_word_under_cursor();
+    int r_l = vim->_cursor_get_line();
+    int r_c = vim->_cursor_get_column();
+
+    if (vim->get_text_edit()->search(word, 0, vim->_cursor_get_line(), vim->_cursor_get_column(), r_l, r_c)) {
+        print_line("word found");
+        return Pos(r_l, r_c);
+    }
+    return Pos(r_l, r_c);
+}
+
+Motion::Pos Motion::search_word_under_cursor_backward() {
+
+}
+
+Motion::Pos Motion::find_next() {
+}
+
+Motion::Pos Motion::find_previous() {
+}
+
+
 Motion::Pos Motion::apply() {
     return (this->*fcn)();
 }
@@ -288,7 +311,7 @@ void Motion::run() {
     vim->_cursor_set_column(pos.col);
 }
 
-Motion::Motion(GodotVim *vim, int flags, motionFcn fcn) : vim(vim), flags(flags), fcn(fcn) {
+Motion::Motion(GodotVim *vim, int flags, motionFcn fcn) : Command(vim), flags(flags), fcn(fcn) {
     //CommandDef def;
     //def.motion = this;
     //Test::_add_command("l", def, MOTION, NORMAL);

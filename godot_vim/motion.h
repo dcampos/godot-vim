@@ -23,12 +23,17 @@ public:
     struct Range {
         Pos from;
         Pos to;
+        Range(int from_line, int from_col, int to_line, int to_col)
+            : from(from_line, from_col), to(to_line, to_col) {}
     };
 
     typedef Pos (Motion::* motionFcn) ();
     typedef bool (* matchFunction) (int, String);
 
 private:
+
+    int flags;
+    motionFcn fcn;
 
     Pos _move_backward(matchFunction function);
     Pos _move_forward(matchFunction function);
@@ -38,12 +43,7 @@ private:
 
     Motion(GodotVim *vim, int flags, motionFcn fcn);
 
-    GodotVim* vim;
-
 public:
-
-    int flags;
-    motionFcn fcn;
 
     Pos _move_left();
     Pos _move_right();
@@ -71,13 +71,11 @@ public:
     Pos _move_to_last_searched_char_backward();
     Pos _move_to_column();
 
+    Pos search_word_under_cursor();
+    Pos search_word_under_cursor_backward();
 
-    inline Pos move() {
-        print_line("moving!");
-        print_line("exclusive? " + itos(flags & EXCLUSIVE));
-        print_line("linewise? " + itos(flags & LINEWISE));
-        print_line("text_object? " + itos(flags & TEXT_OBJECT));
-    }
+    Pos find_next();
+    Pos find_previous();
 
     Pos apply();
 
