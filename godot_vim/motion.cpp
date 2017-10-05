@@ -2,7 +2,7 @@
 #include "util.h"
 #include "godot_vim.h"
 
-Motion::Pos Motion::_move_forward(Motion::matchFunction function) {
+Motion::Pos Motion::_move_forward(Motion::matchFunction function, bool accept_empty) {
     int next_cc = vim->_cursor_get_column() + 1;
     int next_cl = vim->_cursor_get_line();
 
@@ -12,6 +12,7 @@ Motion::Pos Motion::_move_forward(Motion::matchFunction function) {
         line_text = vim->_get_line(i);
 
         if (line_text.length() == 0 || next_cc >= line_text.length()) {
+            if (line_text.length() == 0 && accept_empty && i > vim->_cursor_get_line()) return Pos(i, 0);
             next_cc = 0;
             continue;
         }
@@ -27,7 +28,7 @@ Motion::Pos Motion::_move_forward(Motion::matchFunction function) {
     return Pos(vim->_cursor_get_line(), vim->_cursor_get_column());
 }
 
-Motion::Pos Motion::_move_backward(Motion::matchFunction function) {
+Motion::Pos Motion::_move_backward(Motion::matchFunction function, bool accept_empty) {
     int next_cc = vim->_cursor_get_column() - 1;
     int next_cl = vim->_cursor_get_line();
 
@@ -41,6 +42,8 @@ Motion::Pos Motion::_move_backward(Motion::matchFunction function) {
         if (needs_cc) next_cc = line_text.length() - 1;
 
         if (line_text.length() == 0) {
+            if (accept_empty && i < vim->_cursor_get_line()) return Pos(i, 0);
+
             needs_cc = true;
             continue;
         }
@@ -66,7 +69,7 @@ Motion::Pos Motion::_move_to_first_non_blank(int line) {
         vim->_cursor_set_line(line);
     for (int i = 0; i < line_text.length(); i++) {
         CharType c = line_text[i];
-        if (!GodotVim::_is_space(c)) {
+        if (!_is_space(c)) {
                 vim->_cursor_set_column(i);
                 return Pos(line, i);
         }
@@ -110,11 +113,11 @@ Motion::Pos Motion::_move_to_line_end() {
 }
 
 Motion::Pos Motion::_move_word_right() {
-    return _move_forward(&_is_beginning_of_word);
+    return _move_forward(&_is_beginning_of_word, true);
 }
 
 Motion::Pos Motion::_move_word_right_big() {
-    return _move_forward(&_is_beginning_of_big_word);
+    return _move_forward(&_is_beginning_of_big_word, true);
 }
 
 Motion::Pos Motion::_move_word_end() {
@@ -134,11 +137,11 @@ Motion::Pos Motion::_move_word_end_big_backward() {
 }
 
 Motion::Pos Motion::_move_word_beginning() {
-    return _move_backward(&_is_beginning_of_word);
+    return _move_backward(&_is_beginning_of_word, true);
 }
 
 Motion::Pos Motion::_move_word_beginning_big() {
-    return _move_backward(&_is_beginning_of_big_word);
+    return _move_backward(&_is_beginning_of_big_word, true);
 }
 
 Motion::Pos Motion::_move_paragraph_up() {
@@ -183,8 +186,8 @@ Motion::Pos Motion::_move_to_matching_pair() {
     String line_text = vim->_get_line(vim->_cursor_get_line());
     int col = vim->_cursor_get_column();
     CharType c = line_text[col];
-    if (vim->_is_pair_left_symbol(c)) {
-        CharType m = vim->_get_right_pair_symbol(c);
+    if (_is_pair_left_symbol(c)) {
+        CharType m = _get_right_pair_symbol(c);
 
         col++;
         int count = 1;
@@ -204,8 +207,8 @@ Motion::Pos Motion::_move_to_matching_pair() {
             }
             col = 0;
         }
-    } else if (vim->_is_pair_right_symbol(c)) {
-        CharType m = vim->_get_left_pair_symbol(c);
+    } else if (_is_pair_right_symbol(c)) {
+        CharType m = _get_left_pair_symbol(c);
 
         col--;
         int count = 1;
@@ -321,4 +324,3 @@ Motion * Motion::create_motion(GodotVim *vim, int flags, Motion::motionFcn fcn) 
     Motion *motion = memnew(Motion(vim, flags, fcn));
     return motion;
 }
-

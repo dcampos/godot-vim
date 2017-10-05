@@ -35,4 +35,6 @@ bool _is_beginning_of_word(int col, String line);
 
 bool _is_beginning_of_big_word(int col, String line);
 
+int _find_first_non_blank(String line);
+
 #endif // UTIL_H

@@ -20,6 +20,13 @@ public:
     void enter_insert_mode();
     void enter_insert_mode_append();
 
+    void enter_insert_mode_after_eol();
+    void enter_insert_mode_after_selection();
+    void enter_insert_mode_first_non_blank();
+    void enter_insert_mode_before_selection();
+
+    void enter_ex();
+
     void open_line_above();
     void open_line_below();
 

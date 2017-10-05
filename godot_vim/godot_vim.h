@@ -74,18 +74,18 @@ private:
     Map<String, Command*> normal_command_map;
     Map<String, Command*> visual_command_map;
 
-    Motion *motion;
-
     Vector2 visual_start;
     int virtual_column;
 
     TextEdit *text_edit;
     CodeTextEditor *editor;
+    LineEdit *command_line;
 
     void _setup_editor();
     void _clear_state();
     void _editor_focus_enter();
     void _editor_input(const InputEvent &p_event);
+    void _command_input(const String &p_input);
 
     // Helper methods
     void _parse_command_input(const InputEventKey &p_event);
@@ -162,11 +162,6 @@ public:
     int _cursor_get_line();
     int _cursor_get_column();
 
-    int _selection_get_line_from();
-    int _selection_get_column_from();
-    int _selection_get_line_to();
-    int _selection_get_column_to();
-
     Motion::Range get_selection();
 
     void _update_visual_selection();
@@ -175,6 +170,7 @@ public:
     TextEdit *get_text_edit();
 
     const InputState get_input_state();
+    LineEdit *get_command_line();
 
     GodotVim();
     ~GodotVim();

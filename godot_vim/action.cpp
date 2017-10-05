@@ -1,4 +1,5 @@
 #include "action.h"
+#include "util.h"
 #include "godot_vim.h"
 
 void Action::enter_insert_mode() {
@@ -8,6 +9,34 @@ void Action::enter_insert_mode() {
 void Action::enter_insert_mode_append() {
     vim->_set_vim_mode(GodotVim::INSERT);
     vim->_cursor_set_column(vim->_cursor_get_column() + 1);
+}
+
+void Action::enter_insert_mode_after_eol() {
+    vim->_set_vim_mode(GodotVim::INSERT);
+    vim->_cursor_set_column(vim->_get_current_line_length());
+}
+
+void Action::enter_insert_mode_after_selection() {
+    vim->_cursor_set_column(vim->get_selection().to.col);
+    vim->_set_vim_mode(GodotVim::INSERT);
+}
+
+void Action::enter_insert_mode_first_non_blank() {
+    vim->_set_vim_mode(GodotVim::INSERT);
+    vim->_cursor_set_column(_find_first_non_blank(vim->_get_current_line()));
+}
+
+void Action::enter_insert_mode_before_selection() {
+    vim->_cursor_set_column(0);
+    vim->_cursor_set_line(vim->get_selection().from.row);
+    vim->_set_vim_mode(GodotVim::INSERT);
+}
+
+void Action::enter_ex() {
+    vim->get_command_line()->show();
+    vim->get_command_line()->set_text(":");
+    vim->get_command_line()->set_cursor_pos(1);
+    vim->get_command_line()->grab_focus();
 }
 
 void Action::undo() {

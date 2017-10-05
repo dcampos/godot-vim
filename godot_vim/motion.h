@@ -35,8 +35,8 @@ private:
     int flags;
     motionFcn fcn;
 
-    Pos _move_backward(matchFunction function);
-    Pos _move_forward(matchFunction function);
+    Pos _move_backward(matchFunction function, bool accept_empty=false);
+    Pos _move_forward(matchFunction function, bool accept_empty=false);
     Pos _move_to_first_non_blank(int line);
     Pos _move_by_columns(int cols);
     Pos _move_by_lines(int lines);

@@ -125,3 +125,15 @@ bool _is_beginning_of_big_word(int col, String line) {
 
     return _is_space(char1) && (_is_text_char(char2) || _is_symbol(char2));
 }
+
+int _find_first_non_blank(String line) {
+
+    for (int i = 0; i < line.length(); i++) {
+        CharType c = line[i];
+        if (!_is_space(c)) {
+                return i;
+        }
+    }
+
+    return 0;
+}
