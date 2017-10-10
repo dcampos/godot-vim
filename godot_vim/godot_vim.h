@@ -6,7 +6,9 @@
 #include "editor/plugins/script_editor_plugin.h"
 #include "motion.h"
 
-class GodotVim : public Reference {
+class GodotVimPlugin;
+
+class GodotVim : public Node {
 public:
     enum VimMode {
         NORMAL,
@@ -22,7 +24,7 @@ public:
     };
 
 private:
-    OBJ_TYPE(GodotVim, Reference);
+    OBJ_TYPE(GodotVim, Node);
 
     typedef void (GodotVim::* cmdFunction) ();
     typedef bool (* matchFunction) (int, String);
@@ -77,6 +79,8 @@ private:
     Vector2 visual_start;
     int virtual_column;
 
+    GodotVimPlugin *plugin;
+    EditorNode *editor_node;
     TextEdit *text_edit;
     CodeTextEditor *editor;
     LineEdit *command_line;
@@ -148,6 +152,8 @@ public:
     void _set_visual_type(VisualType vtype);
     VisualType _get_visual_type();
 
+    void _update_visual_selection();
+
     void _undo();
     void _redo();
 
@@ -164,15 +170,16 @@ public:
 
     Motion::Range get_selection();
 
-    void _update_visual_selection();
-
     void set_line(int line, String text);
-    TextEdit *get_text_edit();
+
+    void save_script();
 
     const InputState get_input_state();
+
+    TextEdit *get_text_edit();
     LineEdit *get_command_line();
 
-    GodotVim();
+    GodotVim(EditorNode *editor_node);
     ~GodotVim();
 
     static bool _is_text_char(CharType c);
@@ -197,7 +204,9 @@ class GodotVimPlugin : public EditorPlugin {
 
     void _plug_editor(CodeTextEditor *editor);
 
-    String vim_plugged_group;
+    EditorNode *editor_node;
+
+    bool plugged;
 
 protected:
     static void _bind_methods();
@@ -207,6 +216,8 @@ public:
     void _tree_changed();
     void _node_removed(Node *p_node);
     void _tabs_changed(int current);
+
+    Node *_get_node_by_type(Node *node, String type);
 
     GodotVimPlugin(EditorNode *p_node);
     ~GodotVimPlugin();

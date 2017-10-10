@@ -2,6 +2,7 @@
 #include "map.h"
 #include "os/keyboard.h"
 #include "os/input_event.h"
+#include "editor/editor_node.h"
 #include "motion.h"
 #include "action.h"
 #include "operation.h"
@@ -40,26 +41,26 @@ void GodotVim::_parse_command_input(const InputEventKey &p_event) {
     input_state.input_string += character;
 
     if (vim_mode == NORMAL && _is_normal_command(input_state.input_string)) {
-        print_line("running normal");
+        //print_line("running normal");
 
         Command *cmd = _find_command(input_state.input_string);
 
         _run_normal_command(cmd);
 
     } else if (vim_mode == VISUAL && _is_visual_command(input_state.input_string)) {
-        print_line("running visual");
+        //print_line("running visual");
 
         Command *cmd = _find_command(input_state.input_string);
 
         _run_visual_command(cmd);
 
     } else if (input_state.input_string.is_numeric()) {
-        print_line("adding to repeat count");
+        //print_line("adding to repeat count");
         int n = input_state.input_string.to_int();
         input_state.repeat_count = input_state.repeat_count * 10 + n;
         input_state.input_string.clear();
     } else {
-        print_line("checking if it exists...");
+        //print_line("checking if it exists...");
 
         if (!_map_contains_key(input_state.input_string, command_map))
             _clear_state();
@@ -76,14 +77,14 @@ void GodotVim::_run_normal_command(Command *p_cmd) {
 
     } else if (p_cmd->is_operation()) {
 
-        print_line("adding operation => " + p_cmd->get_type());
+        //print_line("adding operation => " + p_cmd->get_type());
         input_state.operator_command = p_cmd;
         input_state.operator_count = input_state.repeat_count;
         input_state.repeat_count = 0;
         input_state.input_string.clear();
 
     } else if (p_cmd->is_motion() && input_state.operator_command) {
-        print_line("running motion/operator command!");
+        //print_line("running motion/operator command!");
 
         Command *op_cmd = input_state.operator_command;
 
@@ -102,7 +103,7 @@ void GodotVim::_run_normal_command(Command *p_cmd) {
         }
         _clear_state();
     } else {
-        print_line("running simple command!");
+        //print_line("running simple command!");
         _run_command(p_cmd);
         _clear_state();
     }
@@ -236,10 +237,10 @@ int GodotVim::_cursor_get_column() {
 
 Motion::Range GodotVim::get_selection() {
     return Motion::Range(
-                text_edit->get_selection_from_line(),
-                text_edit->get_selection_from_column(),
-                text_edit->get_selection_to_line(),
-                text_edit->get_selection_to_column()
+        text_edit->get_selection_from_line(),
+        text_edit->get_selection_from_column(),
+        text_edit->get_selection_to_line(),
+        text_edit->get_selection_to_column()
     );
 }
 
@@ -263,11 +264,10 @@ void GodotVim::set_line(int line, String text) {
     text_edit->set_line(line, text);
 }
 
+
 TextEdit * GodotVim::get_text_edit() {
     return text_edit;
 }
-
-// Some util functions for word movement
 
 void GodotVim::_goto_next_tab() {
     TabContainer *tab_container = text_edit->get_parent()->get_parent()->cast_to<TabContainer>();
@@ -351,6 +351,8 @@ void GodotVim::_setup_editor() {
 }
 
 void GodotVim::_setup_commands() {
+    if (!command_map.empty()) return;
+
     _create_command("h", Motion::create_motion(this, 0, &Motion::_move_left));
     _create_command("j", Motion::create_motion(this, 0, &Motion::_move_down));
     _create_command("k", Motion::create_motion(this, 0, &Motion::_move_up));
@@ -481,12 +483,20 @@ void GodotVim::_editor_focus_enter() {
 void GodotVim::_command_input(const String &p_input) {
     command_line->hide();
     text_edit->grab_focus();
+    if (p_input == ":w") {
+        save_script();
+    }
 }
 
 void GodotVim::_bind_methods() {
     ObjectTypeDB::bind_method("_editor_input", &GodotVim::_editor_input);
     ObjectTypeDB::bind_method("_editor_focus_enter", &GodotVim::_editor_focus_enter);
     ObjectTypeDB::bind_method("_command_input", &GodotVim::_command_input);
+}
+
+void GodotVim::save_script() {
+    print_line("Saving resource...");
+    editor_node->save_resource(editor->cast_to<ScriptTextEditor>()->get_edited_script());
 }
 
 void GodotVim::set_editor(CodeTextEditor *editor) {
@@ -509,7 +519,8 @@ void GodotVim::set_editor(CodeTextEditor *editor) {
     _setup_editor();
 }
 
-GodotVim::GodotVim() {
+GodotVim::GodotVim(EditorNode *p_editor_node) {
+    editor_node = p_editor_node;
     vim_mode = NORMAL;
     virtual_column = 0;
     visual_start = Vector2();
@@ -517,7 +528,7 @@ GodotVim::GodotVim() {
 }
 
 GodotVim::~GodotVim() {
-    disconnect_all();
+    //disconnect_all();
 }
 
 void GodotVimPlugin::_node_removed(Node * p_node) {
@@ -526,36 +537,64 @@ void GodotVimPlugin::_node_removed(Node * p_node) {
 void GodotVimPlugin::_tree_changed() {
     print_line("tree changed");
 
-    Node *text_edit = get_editor_viewport()->find_node("TextEdit", true, false);
+    if (plugged) return;
 
-    if (text_edit == NULL) return;
+    Node *editor = get_editor_viewport();
 
-    if (text_edit->is_type("TextEdit")) {
+    if (editor == NULL) return;
 
-        Node * parent = text_edit->get_parent();
+    Node *script_editor = _get_node_by_type(editor, "ScriptEditor");
 
-        if (parent->is_type("CodeTextEditor") && !parent->is_in_group(vim_plugged_group)) {
-            Node * parent_parent = parent->get_parent();
+    if (!script_editor) return;
 
-            if (parent_parent->is_type("TabContainer")) {
+    Node *split = _get_node_by_type(script_editor, "HSplitContainer");
 
-                tab_container = parent_parent->cast_to<TabContainer>();
-                tab_container->connect("tab_changed", this, "_tabs_changed");
+    if (!split) return;
 
-                for (int i = 0; i < tab_container->get_tab_count(); i++) {
-                    CodeTextEditor *code_editor = tab_container->get_tab_control(i)->cast_to<CodeTextEditor>();
-                    code_editor->add_to_group(vim_plugged_group);
-                    _plug_editor(code_editor);
-                }
-            }
+    Node *tabs = _get_node_by_type(split, "TabContainer");
 
+    Node *script_list = _get_node_by_type(split, "ItemList");
+
+    if (!tabs || !script_list) return;
+
+    plugged = true;
+
+    tab_container = tabs->cast_to<TabContainer>();
+
+    tab_container->connect("tab_changed", this, "_tabs_changed");
+
+    for (int i = 0; i < tab_container->get_tab_count(); i++) {
+        if (!tab_container->get_tab_control(i)->is_type("CodeTextEditor"))
+            continue;
+
+        CodeTextEditor *code_editor = tab_container->get_tab_control(i)->cast_to<CodeTextEditor>();
+
+        if (code_editor->has_node(NodePath("GodotVim"))) {
+            continue;
+        }
+
+        _plug_editor(code_editor);
+    }
+
+}
+
+Node *GodotVimPlugin::_get_node_by_type(Node *node, String type) {
+    for (int i=0; i < node->get_child_count(); i++) {
+        Node * child = node->get_child(i);
+        if (child->is_type(type)) {
+            return child;
         }
     }
+
+    return NULL;
 }
 
 void GodotVimPlugin::_plug_editor(CodeTextEditor *editor) {
-    GodotVim *godot_vim = memnew(GodotVim);
+    print_line("plugging...");
+    GodotVim *godot_vim = memnew(GodotVim(editor_node));
+    godot_vim->set_name("GodotVim");
     godot_vim->set_editor(editor);
+    editor->add_child(godot_vim);
 }
 
 void GodotVimPlugin::_notification(int p_what) {
@@ -573,8 +612,9 @@ void GodotVimPlugin::_notification(int p_what) {
 void GodotVimPlugin::_tabs_changed(int current) {
     print_line("tabs changed");
     CodeTextEditor *code_editor = tab_container->get_tab_control(current)->cast_to<CodeTextEditor>();
-    if (!code_editor->is_in_group(vim_plugged_group))
+    if (!code_editor->has_node(NodePath("GodotVim"))) {
         _plug_editor(code_editor);
+    }
 }
 
 void GodotVimPlugin::_bind_methods() {
@@ -585,11 +625,12 @@ void GodotVimPlugin::_bind_methods() {
 
 GodotVimPlugin::GodotVimPlugin(EditorNode *p_node) {
     print_line("plugin created");
-    vim_plugged_group = "vim_editor_plugged";
+    editor_node = p_node;
+    plugged = false;
 }
 
 GodotVimPlugin::~GodotVimPlugin() {
 
-    if (tab_container)
-        tab_container->disconnect("tab_changed", this, "_tabs_changed");
+    //if (tab_container)
+        //tab_container->disconnect("tab_changed", this, "_tabs_changed");
 }
