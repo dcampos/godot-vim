@@ -611,10 +611,13 @@ void GodotVimPlugin::_notification(int p_what) {
 
 void GodotVimPlugin::_tabs_changed(int current) {
     print_line("tabs changed");
-    CodeTextEditor *code_editor = tab_container->get_tab_control(current)->cast_to<CodeTextEditor>();
-    if (!code_editor->has_node(NodePath("GodotVim"))) {
-        _plug_editor(code_editor);
-    }
+
+    Control *control = tab_container->get_tab_control(current);
+
+    if (!control->is_type("CodeTextEditor") || control->has_node(NodePath("GodotVim")))
+        return;
+
+    _plug_editor(control->cast_to<CodeTextEditor>());
 }
 
 void GodotVimPlugin::_bind_methods() {
