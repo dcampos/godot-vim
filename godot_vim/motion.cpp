@@ -303,9 +303,30 @@ Motion::Pos Motion::find_next() {
 Motion::Pos Motion::find_previous() {
 }
 
+bool Motion::is_inclusive() {
+    return flags & INCLUSIVE;
+}
+
+bool Motion::is_linewise() {
+    return flags & LINEWISE;
+}
+
+bool Motion::is_text_object() {
+    return flags & TEXT_OBJECT;
+}
 
 Motion::Pos Motion::apply() {
     return (this->*fcn)();
+}
+
+Motion::Range Motion::get_range() {
+    Pos cur_pos = Pos(vim->_cursor_get_line(), vim->_cursor_get_column());
+    Pos pos = apply();
+    Range range = Range(cur_pos, pos);
+    range.inclusive = is_inclusive();
+    range.linewise = is_linewise();
+    range.text_object = is_text_object();
+    return range;
 }
 
 void Motion::run() {

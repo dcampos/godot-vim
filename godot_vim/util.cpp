@@ -137,3 +137,16 @@ int _find_first_non_blank(String line) {
 
     return 0;
 }
+
+String _join_lines(Vector<String> lines) {
+    String ret;
+
+    for (int i = 0; i < lines.size(); i++) {
+        if (i > 0) ret += "\n";
+        ret += lines[i];
+    }
+
+    return ret;
+}
+
+

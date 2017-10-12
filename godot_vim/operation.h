@@ -29,6 +29,7 @@ public:
     void delete_lines();
 
     void yank();
+
     void to_upper();
     void to_lower();
     void toggle_case();
@@ -39,6 +40,8 @@ public:
     void indent_text();
     void unindent_text();
     void reindent_text();
+
+    void apply_with_motion(Motion *motion);
 
     void run();
 

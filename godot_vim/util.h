@@ -37,4 +37,6 @@ bool _is_beginning_of_big_word(int col, String line);
 
 int _find_first_non_blank(String line);
 
+String _join_lines(Vector<String> lines);
+
 #endif // UTIL_H

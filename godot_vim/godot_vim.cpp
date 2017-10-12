@@ -79,7 +79,7 @@ void GodotVim::_run_normal_command(Command *p_cmd) {
 
         //print_line("adding operation => " + p_cmd->get_type());
         input_state.operator_command = p_cmd;
-        input_state.operator_count = input_state.repeat_count;
+        input_state.operator_count = input_state.repeat_count ? input_state.repeat_count : 1;
         input_state.repeat_count = 0;
         input_state.input_string.clear();
 
@@ -89,17 +89,7 @@ void GodotVim::_run_normal_command(Command *p_cmd) {
         Command *op_cmd = input_state.operator_command;
 
         if (op_cmd->is_operation()) {
-
-            int cl = _cursor_get_line();
-            int cc = _cursor_get_column();
-
-            _run_command(p_cmd);
-
-            text_edit->select(cl, cc, _cursor_get_line(), _cursor_get_column()+1);
-
-            _run_command(op_cmd);
-
-            text_edit->deselect();
+            op_cmd->get_operation()->apply_with_motion(p_cmd->get_motion());
         }
         _clear_state();
     } else {
@@ -135,19 +125,27 @@ void GodotVim::_update_visual_selection() {
     int l1 = _cursor_get_line();
     int c1 = _cursor_get_column();
 
+    Motion::Range range;
+
     if (l1 < visual_start.y || (l1 == visual_start.y && c1 <= visual_start.x)) {
         if (visual_type == SELECT_LINES) {
-            text_edit->select(l1, 0, visual_start.y, _get_line(visual_start.y).length());
+            range = Motion::Range(l1, 0, visual_start.y, _get_line(visual_start.y).length());
+            range.linewise = true;
         } else {
-            text_edit->select(l1, c1, visual_start.y, visual_start.x + 1);
+            range = Motion::Range(l1, c1, visual_start.y, visual_start.x + 1);
+            range.linewise = false;
         }
     } else {
         if (visual_type == SELECT_LINES) {
-            text_edit->select(visual_start.y, 0, l1, _get_line(l1).length());
+            range = Motion::Range(visual_start.y, 0, l1, _get_line(l1).length());
+            range.linewise = true;
         } else {
-            text_edit->select(visual_start.y, visual_start.x, l1, c1 + 1);
+            range = Motion::Range(visual_start.y, visual_start.x, l1, c1 + 1);
+            range.linewise = false;
         }
     }
+
+    select_range(range);
 }
 
 const GodotVim::InputState GodotVim::get_input_state() {
@@ -236,12 +234,41 @@ int GodotVim::_cursor_get_column() {
 }
 
 Motion::Range GodotVim::get_selection() {
-    return Motion::Range(
-        text_edit->get_selection_from_line(),
-        text_edit->get_selection_from_column(),
-        text_edit->get_selection_to_line(),
-        text_edit->get_selection_to_column()
-    );
+    return selection_range;
+}
+
+void GodotVim::select_range(Motion::Range range) {
+    if (range.linewise) {
+        int count = _get_line(range.to.row).length();
+        range.from.col = 0;
+        range.to.col = count;
+    }
+    print_line("selecting from " + itos(range.from.row) + "," + itos(range.from.col));
+    print_line("        to " + itos(range.to.row) + "," + itos(range.to.col));
+    get_text_edit()->select(range.from.row, range.from.col, range.to.row, range.to.col);
+    selection_range = range;
+}
+
+void GodotVim::yank_range(Motion::Range range) {
+    registry.lines.clear();
+    for (int i = range.from.row; i <= range.to.row; i++) {
+        String line = _get_line(i);
+        int col1 = 0;
+        int col2 = line.length();
+
+        if (i == range.from.row) col1 = range.from.col;
+        if (i == range.to.row) col2 = range.to.col;
+
+        registry.lines.push_back(line.substr(col1, col2 - col1));
+
+        registry.linewise = range.linewise;
+
+        print_line(line.substr(col1, col2));
+    }
+}
+
+Registry GodotVim::get_registry() {
+    return registry;
 }
 
 int GodotVim::_get_current_line_length() {
@@ -354,8 +381,8 @@ void GodotVim::_setup_commands() {
     if (!command_map.empty()) return;
 
     _create_command("h", Motion::create_motion(this, 0, &Motion::_move_left));
-    _create_command("j", Motion::create_motion(this, 0, &Motion::_move_down));
-    _create_command("k", Motion::create_motion(this, 0, &Motion::_move_up));
+    _create_command("j", Motion::create_motion(this, Motion::LINEWISE, &Motion::_move_down));
+    _create_command("k", Motion::create_motion(this, Motion::LINEWISE, &Motion::_move_up));
     _create_command("l", Motion::create_motion(this, 0, &Motion::_move_right));
     _create_command("0", Motion::create_motion(this, 0, &Motion::_move_to_line_start));
     _create_command("$", Motion::create_motion(this, 0, &Motion::_move_to_line_end));
@@ -388,6 +415,8 @@ void GodotVim::_setup_commands() {
     _create_command("A", Action::create_action(this, 0, &Action::enter_insert_mode_after_selection), VISUAL);
     _create_command("I", Action::create_action(this, 0, &Action::enter_insert_mode_first_non_blank));
     _create_command("I", Action::create_action(this, 0, &Action::enter_insert_mode_before_selection), VISUAL);
+    _create_command("p", Action::create_action(this, 0, &Action::paste));
+    _create_command("P", Action::create_action(this, 0, &Action::paste_before));
     _create_command("u", Action::create_action(this, 0, &Action::undo));
     _create_command("<C-R>", Action::create_action(this, 0, &Action::redo));
     _create_command("v", Action::create_action(this, 0, &Action::toggle_visual_mode));
@@ -551,15 +580,17 @@ void GodotVimPlugin::_tree_changed() {
 
     if (!split) return;
 
-    Node *tabs = _get_node_by_type(split, "TabContainer");
+    Node *tc = _get_node_by_type(split, "TabContainer");
 
-    Node *script_list = _get_node_by_type(split, "ItemList");
+    Node *ls = _get_node_by_type(split, "VSplitContainer");
 
-    if (!tabs || !script_list) return;
+    Node *sl = _get_node_by_type(ls, "ItemList");
+
+    if (!tc || !sl) return;
 
     plugged = true;
 
-    tab_container = tabs->cast_to<TabContainer>();
+    tab_container = tc->cast_to<TabContainer>();
 
     tab_container->connect("tab_changed", this, "_tabs_changed");
 

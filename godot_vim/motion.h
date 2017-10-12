@@ -9,7 +9,7 @@ class Motion : public Command {
 public:
 
     enum {
-        EXCLUSIVE = 1,
+        INCLUSIVE = 1,
         LINEWISE = 1 << 1,
         TEXT_OBJECT = 1 << 2,
     };
@@ -17,14 +17,20 @@ public:
     struct Pos {
         int row;
         int col;
+        Pos() {}
         Pos(int row, int col) : row(row), col(col) { }
     };
 
     struct Range {
         Pos from;
         Pos to;
+        bool linewise;
+        bool inclusive;
+        bool text_object;
+        Range() {}
         Range(int from_line, int from_col, int to_line, int to_col)
             : from(from_line, from_col), to(to_line, to_col) {}
+        Range(Pos from, Pos to) : from(from), to(to) {}
     };
 
     typedef Pos (Motion::* motionFcn) ();
@@ -77,7 +83,13 @@ public:
     Pos find_next();
     Pos find_previous();
 
+    bool is_inclusive();
+    bool is_text_object();
+    bool is_linewise();
+
     Pos apply();
+
+    Range get_range();
 
     void run();
 

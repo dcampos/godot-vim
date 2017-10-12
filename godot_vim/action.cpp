@@ -103,6 +103,30 @@ void Action::scroll_to_center() {
     vim->get_text_edit()->center_viewport_to_cursor();
 }
 
+void Action::paste() {
+    Vector<String> lines = vim->get_registry().lines;
+    String text = _join_lines(lines);
+
+    vim->_cursor_set_column(vim->_cursor_get_column() + 1);
+
+    if (vim->get_registry().linewise) {
+        vim->get_text_edit()->insert_at(text, vim->_cursor_get_line() + 1);
+    } else {
+        vim->get_text_edit()->insert_text_at_cursor(text);
+    }
+}
+
+void Action::paste_before() {
+    Vector<String> lines = vim->get_registry().lines;
+    String text = _join_lines(lines);
+
+    if (vim->get_registry().linewise) {
+        vim->get_text_edit()->insert_at(text, vim->_cursor_get_line());
+    } else {
+        vim->get_text_edit()->insert_text_at_cursor(text);
+    }
+}
+
 void Action::run() {
     (this->*fcn)();
 }

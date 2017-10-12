@@ -33,14 +33,14 @@ public:
     void undo();
     void redo();
 
+    void paste();
+    void paste_before();
+
     void toggle_visual_mode_line();
     void toggle_visual_mode();
 
     void next_tab();
     void previous_tab();
-
-    void paste();
-    void paste_before();
 
     void replace_char();
 

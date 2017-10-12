@@ -8,6 +8,11 @@
 
 class GodotVimPlugin;
 
+struct Registry {
+    bool linewise;
+    Vector<String> lines;
+};
+
 class GodotVim : public Node {
 public:
     enum VimMode {
@@ -64,12 +69,8 @@ private:
         String input_string;
     } input_state;
 
-    struct MotionState {
-        Vector2 start;
-        Vector2 end;
-        bool linewise;
-        bool inclusive;
-    } motion_state;
+    Registry registry;
+    Motion::Range selection_range;
 
     Vector<String> command_bindings;
     Map<String, Command*> command_map;
@@ -169,6 +170,10 @@ public:
     int _cursor_get_column();
 
     Motion::Range get_selection();
+
+    void select_range(Motion::Range range);
+    void yank_range(Motion::Range range);
+    Registry get_registry();
 
     void set_line(int line, String text);
 

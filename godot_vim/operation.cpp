@@ -48,7 +48,8 @@ void Operation::delete_lines() {
 }
 
 void Operation::yank() {
-
+    Motion::Range range = vim->get_selection();
+    vim->yank_range(range);
 }
 
 void Operation::change_text() {
@@ -90,6 +91,13 @@ void Operation::unindent_text() {
 
 void Operation::reindent_text() {
 
+}
+
+void Operation::apply_with_motion(Motion *motion) {
+    Motion::Range range = motion->get_range();
+    vim->select_range(range);
+    run();
+    vim->get_text_edit()->deselect();
 }
 
 void Operation::run() {
