@@ -160,7 +160,7 @@ Motion::Pos Motion::_move_paragraph_up() {
         }
     }
 
-    return Pos(vim->_cursor_get_line(), vim->_cursor_get_column());
+    return Pos(0, 0);
 }
 
 Motion::Pos Motion::_move_paragraph_down() {
@@ -179,7 +179,8 @@ Motion::Pos Motion::_move_paragraph_down() {
         }
     }
 
-    return Pos(vim->_cursor_get_line(), vim->_cursor_get_column());
+    int last_line = vim->_get_line_count() - 1;
+    return Pos(last_line, vim->_get_line(last_line).length()  - 1);
 }
 
 Motion::Pos Motion::_move_to_matching_pair() {
