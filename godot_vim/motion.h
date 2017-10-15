@@ -17,6 +17,19 @@ public:
     struct Pos {
         int row;
         int col;
+
+        bool operator < (const Pos &p_other) const {
+            return (p_other.row == row) ? (col < p_other.col) : (row < p_other.row);
+        }
+
+        bool operator > (const Pos &p_other) const {
+            return (p_other.row == row) ? (col > p_other.col) : (row > p_other.row);
+        }
+
+        bool operator == (const Pos &p_other) const {
+            return (row == p_other.row) && (col == p_other.col);
+        }
+
         Pos() {}
         Pos(int row, int col) : row(row), col(col) { }
     };
@@ -27,9 +40,13 @@ public:
         bool linewise;
         bool inclusive;
         bool text_object;
+
         Range() {}
-        Range(int from_line, int from_col, int to_line, int to_col)
-            : from(from_line, from_col), to(to_line, to_col) {}
+
+        Range(int from_line, int from_col, int to_line, int to_col) :
+            from(from_line, from_col),
+            to(to_line, to_col) {}
+
         Range(Pos from, Pos to) : from(from), to(to) {}
     };
 

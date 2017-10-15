@@ -323,7 +323,7 @@ Motion::Pos Motion::apply() {
 Motion::Range Motion::get_range() {
     Pos cur_pos = Pos(vim->_cursor_get_line(), vim->_cursor_get_column());
     Pos pos = apply();
-    Range range = Range(cur_pos, pos);
+    Range range = pos < cur_pos ? Range(pos, cur_pos) : Range(cur_pos, pos);
     range.inclusive = is_inclusive();
     range.linewise = is_linewise();
     range.text_object = is_text_object();
@@ -337,9 +337,6 @@ void Motion::run() {
 }
 
 Motion::Motion(GodotVim *vim, int flags, motionFcn fcn) : Command(vim), flags(flags), fcn(fcn) {
-    //CommandDef def;
-    //def.motion = this;
-    //Test::_add_command("l", def, MOTION, NORMAL);
 }
 
 Motion * Motion::create_motion(GodotVim *vim, int flags, Motion::motionFcn fcn) {
