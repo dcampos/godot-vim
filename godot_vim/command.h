@@ -8,12 +8,35 @@ class Motion;
 class Action;
 class Operation;
 
+enum Context {
+    CONTEXT_NORMAL,
+    CONTEXT_VISUAL,
+    CONTEXT_OPERATION,
+    CONTEXT_NONE
+};
+
 class Command : public Reference {
+
+    int cmd_flags;
+    Context context;
+
+public:
+
+    enum {
+        NEEDS_CHAR = 1,
+        IS_EDIT = 1 << 1,
+    };
 
 protected:
     GodotVim* vim;
 
 public:
+
+    bool is_edit();
+
+    bool needs_char();
+
+    void set_context(Context context);
 
     virtual Motion *get_motion() { return NULL; }
 
@@ -29,7 +52,7 @@ public:
 
     virtual void run() = 0;
 
-    Command(GodotVim *vim);
+    Command(GodotVim *vim, int cmd_flags = 0, Context context = CONTEXT_NONE);
 
 };
 

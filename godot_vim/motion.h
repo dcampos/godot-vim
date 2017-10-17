@@ -18,6 +18,10 @@ public:
         int row;
         int col;
 
+        operator String() const {
+            return "[" + itos(row) + ", " + itos(col) + "]";
+        }
+
         bool operator < (const Pos &p_other) const {
             return (p_other.row == row) ? (col < p_other.col) : (row < p_other.row);
         }
@@ -64,7 +68,7 @@ private:
     Pos _move_by_columns(int cols);
     Pos _move_by_lines(int lines);
 
-    Motion(GodotVim *vim, int flags, motionFcn fcn);
+    Motion(GodotVim *vim, int flags, motionFcn fcn, int cmd_flags);
 
 public:
 
@@ -100,6 +104,12 @@ public:
     Pos find_next();
     Pos find_previous();
 
+    Pos find_char();
+    Pos find_char_backward();
+    Pos find_till_char();
+    Pos find_till_char_backward();
+
+
     bool is_inclusive();
     bool is_text_object();
     bool is_linewise();
@@ -114,7 +124,7 @@ public:
 
     bool is_motion() { return true; }
 
-    static Motion *create_motion(GodotVim *vim, int flags, motionFcn fcn);
+    static Motion *create_motion(GodotVim *vim, int flags, motionFcn fcn, int cmd_flags = 0);
 };
 
 #endif // MOTION_H

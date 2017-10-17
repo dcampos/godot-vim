@@ -13,6 +13,7 @@ void GodotVim::_clear_state() {
     input_state.input_string.clear();
     input_state.repeat_count = 0;
     input_state.operator_count = 0;
+    input_state.input_char.clear();
 }
 
 void GodotVim::_editor_input(const InputEvent &p_event) {
@@ -38,29 +39,39 @@ void GodotVim::_editor_input(const InputEvent &p_event) {
 
 void GodotVim::_parse_command_input(const InputEventKey &p_event) {
     String character = _get_character(p_event);
-    input_state.input_string += character;
 
-    if (vim_mode == NORMAL && _is_normal_command(input_state.input_string)) {
-        //print_line("running normal");
+    if (input_state.current_command && input_state.current_command->needs_char()) {
 
-        Command *cmd = _find_command(input_state.input_string);
+        input_state.input_char = character;
 
-        _run_normal_command(cmd);
+    } else {
+        input_state.input_string += character;
 
-    } else if (vim_mode == VISUAL && _is_visual_command(input_state.input_string)) {
-        //print_line("running visual");
+        Command *cmd = _is_command(input_state.input_string) ? _find_command(input_state.input_string) : NULL;
 
-        Command *cmd = _find_command(input_state.input_string);
+        if (cmd) {
 
-        _run_visual_command(cmd);
+            input_state.current_command = cmd;
+
+            if (cmd->needs_char()) {
+                return;
+            }
+        }
+    }
+
+    if (vim_mode == NORMAL && input_state.current_command) {
+
+        _run_normal_command(input_state.current_command);
+
+    } else if (vim_mode == VISUAL && input_state.current_command) {
+
+        _run_visual_command(input_state.current_command);
 
     } else if (input_state.input_string.is_numeric()) {
-        //print_line("adding to repeat count");
         int n = input_state.input_string.to_int();
         input_state.repeat_count = input_state.repeat_count * 10 + n;
         input_state.input_string.clear();
     } else {
-        //print_line("checking if it exists...");
 
         if (!_map_contains_key(input_state.input_string, command_map))
             _clear_state();
@@ -77,14 +88,12 @@ void GodotVim::_run_normal_command(Command *p_cmd) {
 
     } else if (p_cmd->is_operation()) {
 
-        //print_line("adding operation => " + p_cmd->get_type());
         input_state.operator_command = p_cmd;
         input_state.operator_count = input_state.repeat_count ? input_state.repeat_count : 1;
         input_state.repeat_count = 0;
         input_state.input_string.clear();
 
     } else if (p_cmd->is_motion() && input_state.operator_command) {
-        //print_line("running motion/operator command!");
 
         Command *op_cmd = input_state.operator_command;
 
@@ -168,6 +177,12 @@ bool GodotVim::_map_contains_key(const String &input, Map<String, Command*> map)
     return false;
 }
 
+bool GodotVim::_is_command(const String &binding) {
+    return command_map.has(binding)
+            || (vim_mode == VISUAL && visual_command_map.has(binding))
+            || (vim_mode == NORMAL && normal_command_map.has(binding));
+}
+
 Command * GodotVim::_find_command(String binding) {
     if (vim_mode == NORMAL && normal_command_map.has(binding)) {
         return normal_command_map.find(binding)->get();
@@ -183,6 +198,14 @@ bool GodotVim::_is_normal_command(const String &input) {
 
 bool GodotVim::_is_visual_command(const String &input) {
     return command_map.has(input) || visual_command_map.has(input);
+}
+
+bool GodotVim::_is_char_needed_command(const String &input) {
+    if (input.empty()) return false;
+
+    Command *cmd = _find_command(input);
+
+    return cmd ? cmd->needs_char() : false;
 }
 
 void GodotVim::_run_command(Command *cmd) {
@@ -407,6 +430,11 @@ void GodotVim::_setup_commands() {
     _create_command("%", Motion::create_motion(this, 0, &Motion::_move_to_matching_pair));
     _create_command("n", Motion::create_motion(this, 0, &Motion::find_next));
     _create_command("N", Motion::create_motion(this, 0, &Motion::find_previous));
+
+    _create_command("f", Motion::create_motion(this, Motion::INCLUSIVE, &Motion::find_char, Command::NEEDS_CHAR));
+    _create_command("F", Motion::create_motion(this, Motion::INCLUSIVE, &Motion::find_char_backward, Command::NEEDS_CHAR));
+    _create_command("t", Motion::create_motion(this, 0, &Motion::find_till_char, Command::NEEDS_CHAR));
+    _create_command("T", Motion::create_motion(this, 0, &Motion::find_till_char_backward, Command::NEEDS_CHAR));
 
     // ACTIONS
     _create_command("i", Action::create_action(this, 0, &Action::enter_insert_mode));

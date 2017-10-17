@@ -304,6 +304,46 @@ Motion::Pos Motion::find_next() {
 Motion::Pos Motion::find_previous() {
 }
 
+Motion::Pos Motion::find_char() {
+    int n = find_in_line(vim->_get_current_line(), vim->get_input_state().input_char, vim->_cursor_get_column() + 1);
+
+    if (n >= 0) {
+        return Pos(vim->_cursor_get_line(), n);
+    }
+
+    return Pos(vim->_cursor_get_line(), vim->_cursor_get_column());
+}
+
+Motion::Pos Motion::find_char_backward() {
+    int n = find_in_line(vim->_get_current_line().substr(0, vim->_cursor_get_column()), vim->get_input_state().input_char);
+
+    if (n >= 0) {
+        return Pos(vim->_cursor_get_line(), n);
+    }
+
+    return Pos(vim->_cursor_get_line(), vim->_cursor_get_column());
+}
+
+Motion::Pos Motion::find_till_char() {
+    int n = find_in_line(vim->_get_current_line(), vim->get_input_state().input_char, vim->_cursor_get_column());
+
+    if (n >= 0) {
+        return Pos(vim->_cursor_get_line(), n - 1);
+    }
+
+    return Pos(vim->_cursor_get_line(), vim->_cursor_get_column());
+}
+
+Motion::Pos Motion::find_till_char_backward() {
+    int n = find_in_line(vim->_get_current_line().substr(0, vim->_cursor_get_column()), vim->get_input_state().input_char);
+
+    if (n >= 0) {
+        return Pos(vim->_cursor_get_line(), n + 1);
+    }
+
+    return Pos(vim->_cursor_get_line(), vim->_cursor_get_column());
+}
+
 bool Motion::is_inclusive() {
     return flags & INCLUSIVE;
 }
@@ -336,10 +376,10 @@ void Motion::run() {
     vim->_cursor_set_column(pos.col);
 }
 
-Motion::Motion(GodotVim *vim, int flags, motionFcn fcn) : Command(vim), flags(flags), fcn(fcn) {
+Motion::Motion(GodotVim *vim, int flags, motionFcn fcn, int cmd_flags) : Command(vim, cmd_flags), flags(flags), fcn(fcn) {
 }
 
-Motion * Motion::create_motion(GodotVim *vim, int flags, Motion::motionFcn fcn) {
-    Motion *motion = memnew(Motion(vim, flags, fcn));
+Motion * Motion::create_motion(GodotVim *vim, int flags, Motion::motionFcn fcn, int cmd_flags) {
+    Motion *motion = memnew(Motion(vim, flags, fcn, cmd_flags));
     return motion;
 }

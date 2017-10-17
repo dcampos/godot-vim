@@ -67,6 +67,7 @@ private:
         int operator_count;
         int repeat_count;
         String input_string;
+        String input_char;
     } input_state;
 
     Registry registry;
@@ -101,8 +102,12 @@ private:
 
     void _setup_commands();
 
+    bool _is_command(const String &binding);
+
     bool _is_normal_command(const String &input);
     bool _is_visual_command(const String &input);
+
+    bool _is_char_needed_command(const String &input);
 
     bool _map_contains_key(const String &input, Map<String, Command*> map);
 

@@ -149,4 +149,6 @@ String _join_lines(Vector<String> lines) {
     return ret;
 }
 
-
+int find_in_line(String line, String c, int from) {
+    return line.find(c, from);
+}
