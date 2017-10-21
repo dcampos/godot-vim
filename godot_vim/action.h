@@ -11,7 +11,7 @@ private:
     int flags;
     actionFunction fcn;
 
-    Action(GodotVim *vim, int flags, actionFunction fcn);
+    Action(GodotVim *vim, int flags, actionFunction fcn, int cmd_flags);
 
     void _open_line(bool above);
 
@@ -56,7 +56,7 @@ public:
 
     Action *get_action() { return this; }
 
-    static Action *create_action(GodotVim *vim, int flags, actionFunction fcn);
+    static Action *create_action(GodotVim *vim, int flags, actionFunction fcn, int cmd_flags = 0);
 };
 
 #endif // ACTION_H

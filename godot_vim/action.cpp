@@ -56,6 +56,16 @@ void Action::toggle_visual_mode() {
     }
 }
 
+void Action::replace_char() {
+    ERR_FAIL_COND(vim->input_state.input_char.size() == 0)
+
+    String line = vim->_get_current_line();
+    line[vim->_cursor_get_column()] = vim->get_input_state().input_char[0];
+    vim->get_text_edit()->begin_complex_operation();
+    vim->set_line(vim->_cursor_get_line(), line);
+    vim->get_text_edit()->end_complex_operation();
+}
+
 void Action::open_line_below() {
     vim->_cursor_set_column(vim->_get_current_line_length());
     vim->get_text_edit()->insert_text_at_cursor("\n");
@@ -137,9 +147,9 @@ void Action::_open_line(bool above) {
     vim->get_text_edit()->insert_text_at_cursor("\n");
 }
 
-Action::Action(GodotVim *vim, int flags, Action::actionFunction fcn) : Command(vim), flags(flags), fcn(fcn) {
+Action::Action(GodotVim *vim, int flags, Action::actionFunction fcn, int cmd_flags) : Command(vim, cmd_flags), flags(flags), fcn(fcn) {
 }
 
-Action * Action::create_action(GodotVim *vim, int flags, Action::actionFunction fcn) {
-    return memnew(Action(vim, flags, fcn));
+Action * Action::create_action(GodotVim *vim, int flags, Action::actionFunction fcn, int cmd_flags) {
+    return memnew(Action(vim, flags, fcn, cmd_flags));
 }

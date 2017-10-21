@@ -456,6 +456,8 @@ void GodotVim::_setup_commands() {
     _create_command("C", Action::create_action(this, 0, &Action::change_to_eol), NORMAL);
     _create_command("zz", Action::create_action(this, 0, &Action::scroll_to_center));
 
+    _create_command("r", Action::create_action(this, 0, &Action::replace_char, Command::NEEDS_CHAR));
+
     _create_command(":", Action::create_action(this, 0, &Action::enter_ex));
 
     // SEARCH
@@ -492,9 +494,6 @@ void GodotVim::_setup_command_map() {
     //_create_command("gT", &GodotVim::_goto_previous_tab, ACTION);
 
     //_create_command("J", &GodotVim::_join_lines, ACTION);
-    //_create_command("p", &GodotVim::_paste, ACTION);
-    //_create_command("P", &GodotVim::_paste_before, ACTION);
-    //_create_command("r", &GodotVim::_replace_char, ACTION);
 
     //_create_command("z.", &GodotVim::_scroll_to_center_first_non_blank, ACTION);
     //_create_command("zt", &GodotVim::_scroll_to_top, ACTION);
