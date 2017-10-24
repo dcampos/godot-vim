@@ -57,7 +57,7 @@ void Action::toggle_visual_mode() {
 }
 
 void Action::replace_char() {
-    ERR_FAIL_COND(vim->input_state.input_char.size() == 0)
+    ERR_FAIL_COND(vim->get_input_state().input_char.size() == 0)
 
     String line = vim->_get_current_line();
     line[vim->_cursor_get_column()] = vim->get_input_state().input_char[0];

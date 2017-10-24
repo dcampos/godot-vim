@@ -47,7 +47,7 @@ void GodotVim::_parse_command_input(const InputEventKey &p_event) {
     } else {
         input_state.input_string += character;
 
-        Command *cmd = _is_command(input_state.input_string) ? _find_command(input_state.input_string) : NULL;
+        Command *cmd = _find_command(input_state.input_string);
 
         if (cmd) {
 
@@ -89,6 +89,7 @@ void GodotVim::_run_normal_command(Command *p_cmd) {
     } else if (p_cmd->is_operation()) {
 
         input_state.operator_command = p_cmd;
+        input_state.current_command = NULL;
         input_state.operator_count = input_state.repeat_count ? input_state.repeat_count : 1;
         input_state.repeat_count = 0;
         input_state.input_string.clear();
@@ -184,6 +185,8 @@ bool GodotVim::_is_command(const String &binding) {
 }
 
 Command * GodotVim::_find_command(String binding) {
+    if (!_is_command(binding)) return NULL;
+
     if (vim_mode == NORMAL && normal_command_map.has(binding)) {
         return normal_command_map.find(binding)->get();
     } else if (vim_mode == VISUAL && visual_command_map.has(binding)) {
@@ -425,8 +428,8 @@ void GodotVim::_setup_commands() {
     _create_command("gE", Motion::create_motion(this, 0, &Motion::_move_word_end_big_backward));
     _create_command("b", Motion::create_motion(this, 0, &Motion::_move_word_beginning));
     _create_command("B", Motion::create_motion(this, 0, &Motion::_move_word_beginning_big));
-    _create_command("}", Motion::create_motion(this, 0, &Motion::_move_paragraph_down));
-    _create_command("{", Motion::create_motion(this, 0, &Motion::_move_paragraph_up));
+    _create_command("}", Motion::create_motion(this, Motion::LINEWISE, &Motion::_move_paragraph_down));
+    _create_command("{", Motion::create_motion(this, Motion::LINEWISE, &Motion::_move_paragraph_up));
     _create_command("%", Motion::create_motion(this, 0, &Motion::_move_to_matching_pair));
     _create_command("n", Motion::create_motion(this, 0, &Motion::find_next));
     _create_command("N", Motion::create_motion(this, 0, &Motion::find_previous));
