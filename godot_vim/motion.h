@@ -72,31 +72,31 @@ private:
 
 public:
 
-    Pos _move_left();
-    Pos _move_right();
-    Pos _move_down();
-    Pos _move_up();
-    Pos _move_to_first_non_blank();
-    Pos _move_to_line_end();
-    Pos _move_to_line_start();
-    Pos _move_word_right();
-    Pos _move_word_right_big();
-    Pos _move_word_beginning();
-    Pos _move_word_beginning_big();
-    Pos _move_word_end();
-    Pos _move_word_end_big();
-    Pos _move_word_end_backward();
-    Pos _move_word_end_big_backward();
-    Pos _move_paragraph_up();
-    Pos _move_paragraph_down();
-    Pos _move_to_matching_pair();
-    Pos _move_to_beginning_of_last_line();
-    Pos _move_to_beginning_of_first_line();
-    Pos _move_to_beginning_of_previous_line();
-    Pos _move_to_beginning_of_next_line();
-    Pos _move_to_last_searched_char();
-    Pos _move_to_last_searched_char_backward();
-    Pos _move_to_column();
+    Pos move_left();
+    Pos move_right();
+    Pos move_down();
+    Pos move_up();
+    Pos move_to_first_non_blank();
+    Pos move_to_line_end();
+    Pos move_to_line_start();
+    Pos move_word_right();
+    Pos move_word_right_big();
+    Pos move_word_beginning();
+    Pos move_word_beginning_big();
+    Pos move_word_end();
+    Pos move_word_end_big();
+    Pos move_word_end_backward();
+    Pos move_word_end_big_backward();
+    Pos move_paragraph_up();
+    Pos move_paragraph_down();
+    Pos move_to_matching_pair();
+    Pos move_to_beginning_of_last_line();
+    Pos move_to_beginning_of_first_line();
+    Pos move_to_beginning_of_previous_line();
+    Pos move_to_beginning_of_next_line();
+    Pos move_to_last_searched_char();
+    Pos move_to_last_searched_char_backward();
+    Pos move_to_column();
 
     Pos search_word_under_cursor();
     Pos search_word_under_cursor_backward();

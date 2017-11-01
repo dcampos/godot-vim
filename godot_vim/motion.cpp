@@ -88,63 +88,63 @@ Motion::Pos Motion::_move_by_lines(int lines) {
     return Pos(line, vim->_cursor_get_column());
 }
 
-Motion::Pos Motion::_move_left() {
+Motion::Pos Motion::move_left() {
     return _move_by_columns(-1);
 }
 
-Motion::Pos Motion::_move_right() {
+Motion::Pos Motion::move_right() {
     return _move_by_columns(1);
 }
 
-Motion::Pos Motion::_move_down() {
+Motion::Pos Motion::move_down() {
     return _move_by_lines(1);
 }
 
-Motion::Pos Motion::_move_up() {
+Motion::Pos Motion::move_up() {
     return _move_by_lines(-1);
 }
 
-Motion::Pos Motion::_move_to_line_start() {
+Motion::Pos Motion::move_to_line_start() {
     return Pos(vim->_cursor_get_line(), 0);
 }
 
-Motion::Pos Motion::_move_to_line_end() {
+Motion::Pos Motion::move_to_line_end() {
     return Pos(vim->_cursor_get_line(), vim->_get_current_line_length() - 1);
 }
 
-Motion::Pos Motion::_move_word_right() {
+Motion::Pos Motion::move_word_right() {
     return _move_forward(&_is_beginning_of_word, true);
 }
 
-Motion::Pos Motion::_move_word_right_big() {
+Motion::Pos Motion::move_word_right_big() {
     return _move_forward(&_is_beginning_of_big_word, true);
 }
 
-Motion::Pos Motion::_move_word_end() {
+Motion::Pos Motion::move_word_end() {
     return _move_forward(&_is_end_of_word);
 }
 
-Motion::Pos Motion::_move_word_end_big() {
+Motion::Pos Motion::move_word_end_big() {
     return _move_forward(&_is_end_of_big_word);
 }
 
-Motion::Pos Motion::_move_word_end_backward() {
+Motion::Pos Motion::move_word_end_backward() {
     return _move_backward(&_is_end_of_word);
 }
 
-Motion::Pos Motion::_move_word_end_big_backward() {
+Motion::Pos Motion::move_word_end_big_backward() {
     return _move_backward(&_is_end_of_big_word);
 }
 
-Motion::Pos Motion::_move_word_beginning() {
+Motion::Pos Motion::move_word_beginning() {
     return _move_backward(&_is_beginning_of_word, true);
 }
 
-Motion::Pos Motion::_move_word_beginning_big() {
+Motion::Pos Motion::move_word_beginning_big() {
     return _move_backward(&_is_beginning_of_big_word, true);
 }
 
-Motion::Pos Motion::_move_paragraph_up() {
+Motion::Pos Motion::move_paragraph_up() {
     int next_cl = vim->_cursor_get_line();
 
     bool has_text = false;
@@ -163,7 +163,7 @@ Motion::Pos Motion::_move_paragraph_up() {
     return Pos(0, 0);
 }
 
-Motion::Pos Motion::_move_paragraph_down() {
+Motion::Pos Motion::move_paragraph_down() {
     int next_cl = vim->_cursor_get_line();
 
     bool has_text = false;
@@ -183,7 +183,7 @@ Motion::Pos Motion::_move_paragraph_down() {
     return Pos(last_line, vim->_get_line(last_line).length()  - 1);
 }
 
-Motion::Pos Motion::_move_to_matching_pair() {
+Motion::Pos Motion::move_to_matching_pair() {
     String line_text = vim->_get_line(vim->_cursor_get_line());
     int col = vim->_cursor_get_column();
     CharType c = line_text[col];
@@ -238,42 +238,42 @@ Motion::Pos Motion::_move_to_matching_pair() {
     return Pos(vim->_cursor_get_line(), vim->_cursor_get_column());
 }
 
-Motion::Pos Motion::_move_to_first_non_blank() {
+Motion::Pos Motion::move_to_first_non_blank() {
     return _move_to_first_non_blank(vim->_cursor_get_line());
 }
 
 
-Motion::Pos Motion::_move_to_beginning_of_last_line() {
+Motion::Pos Motion::move_to_beginning_of_last_line() {
     return _move_to_first_non_blank(vim->_get_line_count() - 1);
 }
 
-Motion::Pos Motion::_move_to_beginning_of_first_line() {
+Motion::Pos Motion::move_to_beginning_of_first_line() {
     return _move_to_first_non_blank(0);
 }
 
-Motion::Pos Motion::_move_to_beginning_of_previous_line() {
+Motion::Pos Motion::move_to_beginning_of_previous_line() {
     if (vim->_cursor_get_line() > 0) {
         return _move_to_first_non_blank(vim->_cursor_get_line() - 1);
     }
-    return _move_to_first_non_blank();
+    return move_to_first_non_blank();
 }
 
-Motion::Pos Motion::_move_to_beginning_of_next_line() {
+Motion::Pos Motion::move_to_beginning_of_next_line() {
     if (vim->_cursor_get_line() < vim->_get_line_count() - 1) {
         _move_to_first_non_blank(vim->_cursor_get_line() + 1);
     }
-    return _move_to_first_non_blank();
+    return move_to_first_non_blank();
 }
 
-Motion::Pos Motion::_move_to_last_searched_char() {
-
-}
-
-Motion::Pos Motion::_move_to_last_searched_char_backward() {
+Motion::Pos Motion::move_to_last_searched_char() {
 
 }
 
-Motion::Pos Motion::_move_to_column() {
+Motion::Pos Motion::move_to_last_searched_char_backward() {
+
+}
+
+Motion::Pos Motion::move_to_column() {
     String line_text = vim->_get_current_line();
     if (vim->get_input_state().repeat_count - 1 < line_text.length()) {
         vim->_cursor_set_column(vim->get_input_state().repeat_count - 1);

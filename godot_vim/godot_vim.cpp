@@ -406,31 +406,31 @@ void GodotVim::_setup_editor() {
 void GodotVim::_setup_commands() {
     if (!command_map.empty()) return;
 
-    _create_command("h", Motion::create_motion(this, 0, &Motion::_move_left));
-    _create_command("j", Motion::create_motion(this, Motion::LINEWISE, &Motion::_move_down));
-    _create_command("k", Motion::create_motion(this, Motion::LINEWISE, &Motion::_move_up));
-    _create_command("l", Motion::create_motion(this, 0, &Motion::_move_right));
-    _create_command("0", Motion::create_motion(this, 0, &Motion::_move_to_line_start));
-    _create_command("$", Motion::create_motion(this, 0, &Motion::_move_to_line_end));
-    _create_command("^", Motion::create_motion(this, 0, &Motion::_move_to_first_non_blank));
-    _create_command("gg", Motion::create_motion(this, 0, &Motion::_move_to_beginning_of_first_line));
-    _create_command("G", Motion::create_motion(this, 0, &Motion::_move_to_beginning_of_last_line));
-    _create_command("-", Motion::create_motion(this, 0, &Motion::_move_to_beginning_of_previous_line));
-    _create_command("+", Motion::create_motion(this, 0, &Motion::_move_to_beginning_of_next_line));
-    _create_command(";", Motion::create_motion(this, 0, &Motion::_move_to_last_searched_char));
-    _create_command(",", Motion::create_motion(this, 0, &Motion::_move_to_last_searched_char_backward));
-    _create_command("|", Motion::create_motion(this, 0, &Motion::_move_to_column));
-    _create_command("w", Motion::create_motion(this, 0, &Motion::_move_word_right));
-    _create_command("W", Motion::create_motion(this, 0, &Motion::_move_word_right_big));
-    _create_command("e", Motion::create_motion(this, Motion::INCLUSIVE, &Motion::_move_word_end));
-    _create_command("E", Motion::create_motion(this, Motion::INCLUSIVE, &Motion::_move_word_end_big));
-    _create_command("ge", Motion::create_motion(this, 0, &Motion::_move_word_end_backward));
-    _create_command("gE", Motion::create_motion(this, 0, &Motion::_move_word_end_big_backward));
-    _create_command("b", Motion::create_motion(this, 0, &Motion::_move_word_beginning));
-    _create_command("B", Motion::create_motion(this, 0, &Motion::_move_word_beginning_big));
-    _create_command("}", Motion::create_motion(this, Motion::LINEWISE, &Motion::_move_paragraph_down));
-    _create_command("{", Motion::create_motion(this, Motion::LINEWISE, &Motion::_move_paragraph_up));
-    _create_command("%", Motion::create_motion(this, 0, &Motion::_move_to_matching_pair));
+    _create_command("h", Motion::create_motion(this, 0, &Motion::move_left));
+    _create_command("j", Motion::create_motion(this, Motion::LINEWISE, &Motion::move_down));
+    _create_command("k", Motion::create_motion(this, Motion::LINEWISE, &Motion::move_up));
+    _create_command("l", Motion::create_motion(this, 0, &Motion::move_right));
+    _create_command("0", Motion::create_motion(this, 0, &Motion::move_to_line_start));
+    _create_command("$", Motion::create_motion(this, 0, &Motion::move_to_line_end));
+    _create_command("^", Motion::create_motion(this, 0, &Motion::move_to_first_non_blank));
+    _create_command("gg", Motion::create_motion(this, 0, &Motion::move_to_beginning_of_first_line));
+    _create_command("G", Motion::create_motion(this, 0, &Motion::move_to_beginning_of_last_line));
+    _create_command("-", Motion::create_motion(this, 0, &Motion::move_to_beginning_of_previous_line));
+    _create_command("+", Motion::create_motion(this, 0, &Motion::move_to_beginning_of_next_line));
+    _create_command(";", Motion::create_motion(this, 0, &Motion::move_to_last_searched_char));
+    _create_command(",", Motion::create_motion(this, 0, &Motion::move_to_last_searched_char_backward));
+    _create_command("|", Motion::create_motion(this, 0, &Motion::move_to_column));
+    _create_command("w", Motion::create_motion(this, 0, &Motion::move_word_right));
+    _create_command("W", Motion::create_motion(this, 0, &Motion::move_word_right_big));
+    _create_command("e", Motion::create_motion(this, Motion::INCLUSIVE, &Motion::move_word_end));
+    _create_command("E", Motion::create_motion(this, Motion::INCLUSIVE, &Motion::move_word_end_big));
+    _create_command("ge", Motion::create_motion(this, 0, &Motion::move_word_end_backward));
+    _create_command("gE", Motion::create_motion(this, 0, &Motion::move_word_end_big_backward));
+    _create_command("b", Motion::create_motion(this, 0, &Motion::move_word_beginning));
+    _create_command("B", Motion::create_motion(this, 0, &Motion::move_word_beginning_big));
+    _create_command("}", Motion::create_motion(this, Motion::LINEWISE, &Motion::move_paragraph_down));
+    _create_command("{", Motion::create_motion(this, Motion::LINEWISE, &Motion::move_paragraph_up));
+    _create_command("%", Motion::create_motion(this, 0, &Motion::move_to_matching_pair));
     _create_command("n", Motion::create_motion(this, 0, &Motion::find_next));
     _create_command("N", Motion::create_motion(this, 0, &Motion::find_previous));
 
@@ -583,7 +583,6 @@ GodotVim::GodotVim(EditorNode *p_editor_node) {
 }
 
 GodotVim::~GodotVim() {
-    //disconnect_all();
 }
 
 void GodotVimPlugin::_node_removed(Node * p_node) {
