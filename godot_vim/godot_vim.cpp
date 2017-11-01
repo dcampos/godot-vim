@@ -422,8 +422,8 @@ void GodotVim::_setup_commands() {
     _create_command("|", Motion::create_motion(this, 0, &Motion::_move_to_column));
     _create_command("w", Motion::create_motion(this, 0, &Motion::_move_word_right));
     _create_command("W", Motion::create_motion(this, 0, &Motion::_move_word_right_big));
-    _create_command("e", Motion::create_motion(this, 0, &Motion::_move_word_end));
-    _create_command("E", Motion::create_motion(this, 0, &Motion::_move_word_end_big));
+    _create_command("e", Motion::create_motion(this, Motion::INCLUSIVE, &Motion::_move_word_end));
+    _create_command("E", Motion::create_motion(this, Motion::INCLUSIVE, &Motion::_move_word_end_big));
     _create_command("ge", Motion::create_motion(this, 0, &Motion::_move_word_end_backward));
     _create_command("gE", Motion::create_motion(this, 0, &Motion::_move_word_end_big_backward));
     _create_command("b", Motion::create_motion(this, 0, &Motion::_move_word_beginning));
@@ -436,8 +436,8 @@ void GodotVim::_setup_commands() {
 
     _create_command("f", Motion::create_motion(this, Motion::INCLUSIVE, &Motion::find_char, Command::NEEDS_CHAR));
     _create_command("F", Motion::create_motion(this, Motion::INCLUSIVE, &Motion::find_char_backward, Command::NEEDS_CHAR));
-    _create_command("t", Motion::create_motion(this, 0, &Motion::find_till_char, Command::NEEDS_CHAR));
-    _create_command("T", Motion::create_motion(this, 0, &Motion::find_till_char_backward, Command::NEEDS_CHAR));
+    _create_command("t", Motion::create_motion(this, 0, &Motion::find_char, Command::NEEDS_CHAR));
+    _create_command("T", Motion::create_motion(this, 0, &Motion::find_char_backward, Command::NEEDS_CHAR));
 
     // ACTIONS
     _create_command("i", Action::create_action(this, 0, &Action::enter_insert_mode));

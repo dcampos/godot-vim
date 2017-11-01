@@ -324,26 +324,6 @@ Motion::Pos Motion::find_char_backward() {
     return Pos(vim->_cursor_get_line(), vim->_cursor_get_column());
 }
 
-Motion::Pos Motion::find_till_char() {
-    int n = find_in_line(vim->_get_current_line(), vim->get_input_state().input_char, vim->_cursor_get_column());
-
-    if (n >= 0) {
-        return Pos(vim->_cursor_get_line(), n - 1);
-    }
-
-    return Pos(vim->_cursor_get_line(), vim->_cursor_get_column());
-}
-
-Motion::Pos Motion::find_till_char_backward() {
-    int n = find_in_line(vim->_get_current_line().substr(0, vim->_cursor_get_column()), vim->get_input_state().input_char);
-
-    if (n >= 0) {
-        return Pos(vim->_cursor_get_line(), n + 1);
-    }
-
-    return Pos(vim->_cursor_get_line(), vim->_cursor_get_column());
-}
-
 bool Motion::is_inclusive() {
     return flags & INCLUSIVE;
 }
@@ -356,6 +336,12 @@ bool Motion::is_text_object() {
     return flags & TEXT_OBJECT;
 }
 
+/**
+ * Applies a motion taking repeat count into consideration.
+ *
+ * @brief Motion::apply
+ * @return
+ */
 Motion::Pos Motion::apply() {
     Pos pos = Pos(vim->_cursor_get_line(), vim->_cursor_get_column());
     int repeat = vim->get_input_state().repeat_count;

@@ -106,9 +106,6 @@ public:
 
     Pos find_char();
     Pos find_char_backward();
-    Pos find_till_char();
-    Pos find_till_char_backward();
-
 
     bool is_inclusive();
     bool is_text_object();

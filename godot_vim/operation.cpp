@@ -87,6 +87,9 @@ void Operation::reindent_text() {
 
 void Operation::apply_with_motion(Motion *motion) {
     Motion::Range range = motion->get_range();
+    if (!range.linewise && range.inclusive) {
+        range.to.col++;
+    }
     vim->select_range(range);
     run();
     vim->get_text_edit()->deselect();
