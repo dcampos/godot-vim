@@ -23,8 +23,6 @@ private:
 
 public:
 
-    void delete_char();
-    void delete_previous_char();
     void delete_text();
     void delete_lines();
 

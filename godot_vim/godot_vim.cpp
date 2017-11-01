@@ -463,13 +463,14 @@ void GodotVim::_setup_commands() {
 
     _create_command(":", Action::create_action(this, 0, &Action::enter_ex));
 
+    _create_command("x", Action::create_action(this, 0, &Action::delete_char));
+    _create_command("X", Action::create_action(this, 0, &Action::delete_previous_char));
+
     // SEARCH
     _create_command("*", Motion::create_motion(this, 0, &Motion::search_word_under_cursor));
     _create_command("#", Motion::create_motion(this, 0, &Motion::search_word_under_cursor_backward));
 
     // OPERATIONS
-    _create_command("x", Operation::create_operation(this, 0, &Operation::delete_char));
-    _create_command("X", Operation::create_operation(this, 0, &Operation::delete_previous_char));
     _create_command("d", Operation::create_operation(this, 0, &Operation::delete_text));
     _create_command("D", Operation::create_operation(this, 0, &Operation::delete_text), VISUAL);
 
@@ -485,11 +486,8 @@ void GodotVim::_setup_commands() {
     _create_command("u", Operation::create_operation(this, 0, &Operation::to_lower), VISUAL);
     _create_command("gU", Operation::create_operation(this, 0, &Operation::to_upper));
     _create_command("U", Operation::create_operation(this, 0, &Operation::to_upper), VISUAL);
-}
 
-void GodotVim::_setup_command_map() {
-
-/*
+    // Some unimplemented commands
     //_create_command("<C-v>", &GodotVim::_toggle_visual_mode_block, ACTION);
 
     // ~
@@ -515,8 +513,6 @@ void GodotVim::_setup_command_map() {
     //_create_command("?", &GodotVim::_start_search_backward, SEARCH);
     // g*
     // g#
-
-    */
 
 }
 

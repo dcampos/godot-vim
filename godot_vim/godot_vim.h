@@ -141,7 +141,6 @@ private:
 
     void _check_virtual_column();
 
-    static void _setup_command_map();
     static void _add_command(VimCommand *command);
 
 protected:

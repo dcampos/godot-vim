@@ -31,14 +31,6 @@ void Operation::_change_case(CaseOperation option) {
     vim->get_text_edit()->end_complex_operation();
 }
 
-void Operation::delete_char() {
-
-}
-
-void Operation::delete_previous_char() {
-
-}
-
 void Operation::delete_text() {
     vim->get_text_edit()->cut();
 }

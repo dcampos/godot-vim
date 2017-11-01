@@ -66,6 +66,24 @@ void Action::replace_char() {
     vim->get_text_edit()->end_complex_operation();
 }
 
+void Action::delete_char() {
+    String line = vim->_get_current_line();
+    line.remove(vim->_cursor_get_column());
+    vim->get_text_edit()->begin_complex_operation();
+    vim->set_line(vim->_cursor_get_line(), line);
+    vim->get_text_edit()->end_complex_operation();
+}
+
+void Action::delete_previous_char() {
+    String line = vim->_get_current_line();
+    line.remove(vim->_cursor_get_column() - 1);
+    vim->get_text_edit()->begin_complex_operation();
+    vim->set_line(vim->_cursor_get_line(), line);
+    vim->_cursor_set_column(vim->_cursor_get_column() - 1);
+    vim->get_text_edit()->end_complex_operation();
+}
+
+
 void Action::open_line_below() {
     vim->_cursor_set_column(vim->_get_current_line_length());
     vim->get_text_edit()->insert_text_at_cursor("\n");

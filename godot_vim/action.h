@@ -44,6 +44,9 @@ public:
 
     void replace_char();
 
+    void delete_char();
+    void delete_previous_char();
+
     void delete_to_eol();
     void change_to_eol();
 
