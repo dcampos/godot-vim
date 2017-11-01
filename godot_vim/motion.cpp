@@ -357,7 +357,15 @@ bool Motion::is_text_object() {
 }
 
 Motion::Pos Motion::apply() {
-    return (this->*fcn)();
+    Pos pos = Pos(vim->_cursor_get_line(), vim->_cursor_get_column());
+    int repeat = vim->get_input_state().repeat_count;
+    if (repeat < 1) repeat = 1;
+    for (int i = 0; i < repeat; i++) {
+        vim->_cursor_set_line(pos.row);
+        vim->_cursor_set_column(pos.col);
+        pos = (this->*fcn)();
+    }
+    return pos;
 }
 
 Motion::Range Motion::get_range() {
