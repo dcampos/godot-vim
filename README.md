@@ -4,7 +4,7 @@ This project aims to bring Vim keybindings to Godot's script editor.
 
 ## Status
 
-Development is currently on hold. You may wish to use it as a starting point for further development or for understanding how the script editor works (or worked).
+Development has stopped. Please feel free to use it as a starting point for further development or for understanding how the script editor works (or worked).
 
 ## Getting Started
 
